@@ -15,6 +15,7 @@ import type {
 export interface CLIInputOptions {
   args?: readonly string[];
   input?: NodeJS.ReadableStream;
+  onInterrupt?: () => void;
   output?: NodeJS.WritableStream;
   prompt?: string;
   sessionId?: string;
@@ -88,6 +89,13 @@ export class CLIInput implements InputInterface {
 
     const output = this.options.output ?? stdout;
     this.readline = createInterface({ input, output });
+    this.readline.on("SIGINT", () => {
+      if (this.options.onInterrupt) {
+        this.options.onInterrupt();
+      } else {
+        void this.stop();
+      }
+    });
     const prompt = this.options.prompt ?? "What should the agent do? ";
 
     try {

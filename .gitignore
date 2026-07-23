@@ -15,6 +15,7 @@ coverage/
 # Logs and package-manager noise
 *.log
 .pnpm-store/
+.agent-os/
 
 # Editors and operating systems
 .DS_Store

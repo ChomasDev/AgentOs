@@ -15,6 +15,7 @@
     "@agent-os/core": "workspace:*",
     "@agent-os/discovery-memory": "workspace:*",
     "@agent-os/env-node": "workspace:*",
+    "@agent-os/input-cronjob": "workspace:*",
     "@agent-os/io-cli": "workspace:*",
     "@agent-os/openai": "workspace:*"
   }

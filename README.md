@@ -76,6 +76,7 @@ scripts/mockups/
 | Package | Kind |
 | --- | --- |
 | `@agent-os/io-cli` | input (+ CLI output in same package) |
+| `@agent-os/input-cronjob` | input (+ cron management capability) |
 | `@agent-os/action-cli` | action |
 | `@agent-os/action-perplexityserach` | action |
 | `@agent-os/openai` | ai |
@@ -100,6 +101,25 @@ const env = new CompositeEnvironment([
 
 OpenAI, Perplexity, CLI child processes, OS settings, and terminal formatting
 all receive configuration through this environment instance.
+
+## Cron jobs
+
+The main app starts `CronjobInput` beside `CLIInput`. Cron jobs are stored in
+SQLite at `.agent-os/cronjobs.sqlite` by default and restored whenever the app
+starts. Override the location with `CRONJOB_DB_PATH`.
+
+Each active job stores a cron expression and an agent prompt. When `node-cron`
+fires the job, the prompt enters the same agent loop as any other input.
+The `manage_cronjobs` capability lets the agent add, list, suspend, resume, and
+remove schedules. For example:
+
+```text
+Every weekday at 9 AM Europe/Rome time, research the latest AI news.
+List my cron jobs.
+Suspend the weekday-ai-news cron job.
+Resume the weekday-ai-news cron job.
+Remove the weekday-ai-news cron job.
+```
 
 ## Scripts
 
