@@ -25,6 +25,7 @@
   "scripts": {
     "dev": "pnpm --filter @agent-os/app dev",
     "start": "pnpm --filter @agent-os/app start",
+    "addCapability": "node --experimental-strip-types scripts/add-package.ts",
     "build:core": "tsc -p tsconfig.json",
     "build:packages": "pnpm --filter './packages/**' -r --if-present run build",
     "build": "pnpm run build:core && pnpm run build:packages",
