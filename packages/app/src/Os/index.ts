@@ -75,13 +75,16 @@ function formatAgentLoopEvent(event: AgentLoopEvent): string {
         "input",
         formatValue(event.arguments),
       );
-    case "capability.completed":
+    case "capability.completed": {
+      const failed = isFailedResult(event.result);
+
       return toolBlock(
         event.capability,
-        color.green("✓ COMPLETED"),
-        "output",
+        failed ? color.red("✗ FAILED") : color.green("✓ COMPLETED"),
+        failed ? "error" : "output",
         formatToolResult(event.result),
       );
+    }
     case "capability.failed":
       return toolBlock(
         event.capability,
@@ -141,6 +144,21 @@ function formatToolResult(value: unknown): string {
     return formatValue(value);
   }
 
+  if (value.success === false && isRecord(value.error)) {
+    const code =
+      typeof value.error.code === "string" ? `${value.error.code}: ` : "";
+    const message =
+      typeof value.error.message === "string"
+        ? value.error.message
+        : formatValue(value.error);
+    const details =
+      value.error.details === undefined
+        ? ""
+        : `\n\n${color.dim("details")}\n${formatValue(value.error.details)}`;
+
+    return `${code}${message}${details}`;
+  }
+
   const data = isRecord(value.data) ? value.data : undefined;
 
   if (!data || !("stdout" in data || "stderr" in data)) {
@@ -192,9 +210,7 @@ function truncate(value: string): string {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
-  }
 
-  return serialized.length > 500
-    ? `${serialized.slice(0, 500)}…`
-    : serialized;
+function isFailedResult(value: unknown): boolean {
+  return isRecord(value) && value.success === false;
 }
