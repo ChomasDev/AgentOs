@@ -17,6 +17,10 @@ export default class OS {
       throw new Error("Agent OS requires at least one input");
     }
 
+    if (bootOption.output.length === 0) {
+      throw new Error("Agent OS requires at least one output");
+    }
+
     this.bootOptions = bootOption;
   }
 
@@ -34,17 +38,32 @@ export default class OS {
     this.listening = true;
 
     const listener = async (message: InputMessage) => {
+      const decision = await bootOptions.orchestrator.orchestrate(
+        message,
+        bootOptions.output,
+      );
+      const output = bootOptions.output.find(
+        (candidate) => candidate.channel === decision.outputChannel,
+      );
+
+      if (!output) {
+        throw new Error(
+          `Orchestrator selected unavailable output "${decision.outputChannel}"`,
+        );
+      }
+
       const response = await bootOptions.agentLoop.run(message, {
+        capabilityIds: decision.capabilityIds,
         stream: bootOptions.settings.stream,
         onEvent: bootOptions.settings.showSteps
           ? (event) =>
-              bootOptions.output.write(
+              output.write(
                 formatAgentLoopEvent(event, bootOptions.env),
               )
           : undefined,
       });
 
-      await bootOptions.output.write(
+      await output.write(
         response.type === "text" ? response.text : response.stream,
       );
     };

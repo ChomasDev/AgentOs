@@ -54,17 +54,8 @@ export class DefaultAgentLoop implements AgentLoop {
       query: message.text,
     });
 
-    const manifests = await this.capabilityDiscovery.discover({
-      text: message.text,
-      limit: this.maxCapabilities,
-    });
-    const capabilities = (
-      await Promise.all(
-        manifests.map((manifest) =>
-          this.capabilityDiscovery.get(manifest.id, manifest.version),
-        ),
-      )
-    ).filter((capability): capability is Capability => capability !== undefined);
+    // Orchestrator owns discovery/selection; the loop only loads by ID.
+    const capabilities = await this.loadCapabilities(options.capabilityIds ?? []);
 
     await emit(options, {
       type: "discovery.completed",
@@ -153,6 +144,20 @@ export class DefaultAgentLoop implements AgentLoop {
       instructions: this.instructions,
       maxSteps: this.maxSteps,
     });
+  }
+
+  private async loadCapabilities(
+    capabilityIds: readonly string[],
+  ): Promise<Capability[]> {
+    const capabilities = await Promise.all(
+      [...new Set(capabilityIds)]
+        .slice(0, this.maxCapabilities)
+        .map((id) => this.capabilityDiscovery.get(id)),
+    );
+
+    return capabilities.filter(
+      (capability): capability is Capability => capability !== undefined,
+    );
   }
 }
 

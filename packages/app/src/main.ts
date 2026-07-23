@@ -13,6 +13,7 @@ import {
 } from "@agent-os/input-cronjob";
 import { CLIInput, CLIOutput } from "@agent-os/io-cli";
 import { OpenAIProvider } from "@agent-os/openai";
+import { ModelOrchestrator } from "@agent-os/orchestrator";
 import type { InputInterface } from "@agent-os/core/domain";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -67,7 +68,7 @@ const inputs: InputInterface[] = [cronjobs];
 if (shouldEnableCliInput()) {
   inputs.unshift(new CLIInput({ onInterrupt: shutdown }));
 }
-const output = new CLIOutput();
+const outputs = [new CLIOutput()];
 const capabilityDiscovery = new InMemoryCapabilityDiscovery();
 
 await capabilityDiscovery.register(
@@ -89,12 +90,17 @@ const agentLoop = new DefaultAgentLoop({
   model,
   capabilityDiscovery,
 });
+const orchestrator = new ModelOrchestrator({
+  model,
+  capabilityDiscovery,
+});
 
 os.boot({
   agentLoop,
   env,
   input: inputs,
-  output,
+  orchestrator,
+  output: outputs,
   settings: {
     agentic: true,
     stream: env.getOrDefault("AI_STREAM", "true") !== "false",

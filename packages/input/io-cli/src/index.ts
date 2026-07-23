@@ -145,6 +145,8 @@ export interface CLIOutputOptions {
 
 export class CLIOutput implements OutputInterface {
   readonly channel = "cli" as const;
+  readonly description =
+    "The current interactive CLI terminal or standard output stream";
 
   private readonly output: NodeJS.WritableStream;
 

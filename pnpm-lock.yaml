@@ -279,6 +279,9 @@ importers:
       '@agent-os/openai':
         specifier: workspace:*
         version: link:../ai/openai
+      '@agent-os/orchestrator':
+        specifier: workspace:*
+        version: link:../orchestator
 
   packages/discovery/memory:
     dependencies:
@@ -306,6 +309,12 @@ importers:
       '@agent-os/core':
         specifier: workspace:*
         version: link:../../..
+
+  packages/orchestator:
+    dependencies:
+      '@agent-os/core':
+        specifier: workspace:*
+        version: link:../..
 
   packages/utils: {}
 

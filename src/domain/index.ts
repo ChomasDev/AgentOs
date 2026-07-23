@@ -64,6 +64,11 @@ export type {
 export type { MemoryEntry, MemoryKind } from "./memory/memory-entry.js";
 export type { MemoryProposal } from "./memory/memory-proposal.js";
 export type { MemoryQuery } from "./memory/memory-query.js";
+export type {
+  OrchestrationDecision,
+  Orchestrator,
+  OrchestratorOptions,
+} from "./orchestration/orchestrator.js";
 export type { OSBootOptions } from "./os/boot.js";
 export type {
   OutputChannel as IOOutputChannel,

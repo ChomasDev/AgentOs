@@ -14,13 +14,15 @@ Each adapter package implements one domain interface:
 | `ai` | `AIProvider` | `packages/ai/<name>` | `@agent-os/ai-<name>` | Model provider (OpenAI, Claude, local, …) |
 | `env` | `Environment` | `packages/env/<name>` | `@agent-os/env-<name>` | Reads configuration and secrets from process env, dotenv, maps, vaults, … |
 | `discovery` | `CapabilityDiscovery` | `packages/discovery/<name>` | `@agent-os/discovery-<name>` | Registry that finds/registers capabilities |
-| `agent` | `AgentLoop` | `packages/agent/<name>` | `@agent-os/agent-<name>` | Orchestrates discovery → model → capability calls |
+| `orchestrator` | `Orchestrator` | `packages/orchestrator/<name>` | `@agent-os/orchestrator-<name>` | Selects capabilities and the response destination for each message |
+| `agent` | `AgentLoop` | `packages/agent/<name>` | `@agent-os/agent-<name>` | Runs the model/tool loop with the selected capabilities |
 
 **Capability (`action`)** is the one that exposes a callable tool with a manifest (`id`, `name`, schemas, tags). The other kinds wire the OS around those tools.
 
-`OSBootOptions.input` is a vector of input adapters. The OS starts every input
-concurrently, so long-running sources such as cron jobs, HTTP listeners, and
-the CLI can feed the same agent loop.
+`OSBootOptions.input` and `OSBootOptions.output` are vectors. The OS starts
+every input concurrently, so long-running sources such as cron jobs, HTTP
+listeners, and the CLI can feed the same agent loop. For every message, the
+orchestrator selects one output from the configured output vector.
 
 Domain types are exported from `@agent-os/core/domain` (see `src/domain/`).
 
@@ -42,6 +44,7 @@ Non-interactive:
 pnpm addCapability --kind action --name web -y
 pnpm addCapability -k input -n express -y
 pnpm addCapability -k env -n vault -y
+pnpm addCapability -k orchestrator -n rules -y
 ```
 
 ### What gets created
@@ -82,6 +85,7 @@ scripts/mockups/
 | `@agent-os/openai` | ai |
 | `@agent-os/env-node` | env |
 | `@agent-os/discovery-memory` | discovery |
+| `@agent-os/orchestrator` | orchestrator |
 | `@agent-os/agent-loop` | agent |
 | `@agent-os/app` | composition root |
 
@@ -101,6 +105,19 @@ const env = new CompositeEnvironment([
 
 OpenAI, Perplexity, CLI child processes, OS settings, and terminal formatting
 all receive configuration through this environment instance.
+
+## Orchestration
+
+`ModelOrchestrator` uses the OS model before the agent loop runs. It receives
+the current message and chat metadata, available capability manifests, and
+configured output channels. Its structured decision chooses:
+
+- the capability IDs the agent loop may use;
+- the single output channel that receives progress and the final response.
+
+The decision is validated against the available capabilities and outputs.
+If model routing fails, the orchestrator falls back to text-based capability
+discovery and the preferred, matching-input, or first configured output.
 
 ## Cron jobs
 

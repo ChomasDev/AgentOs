@@ -8,5 +8,7 @@ export type OutputContent = string | AsyncIterable<string>;
  */
 export interface OutputInterface {
   readonly channel: OutputChannel;
+  /** Human-readable routing guidance for an orchestrator. */
+  readonly description?: string;
   write(content: OutputContent): Promise<void>;
 }

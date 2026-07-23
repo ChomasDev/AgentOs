@@ -18,6 +18,7 @@ type Kind =
   | "ai"
   | "env"
   | "discovery"
+  | "orchestrator"
   | "agent";
 
 interface KindConfig {
@@ -68,6 +69,12 @@ const KINDS: Record<Kind, KindConfig> = {
     label: "CapabilityDiscovery",
     packagePrefix: "discovery",
     classSuffix: "Discovery",
+  },
+  orchestrator: {
+    folder: "orchestrator",
+    label: "Orchestrator",
+    packagePrefix: "orchestrator",
+    classSuffix: "Orchestrator",
   },
   agent: {
     folder: "agent",

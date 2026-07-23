@@ -43,6 +43,11 @@ export type AgentLoopEventHandler = (
 ) => void | Promise<void>;
 
 export interface AgentLoopOptions {
+  /**
+   * Capability IDs selected by the orchestrator.
+   * Empty means run without tools.
+   */
+  capabilityIds: readonly string[];
   stream: boolean;
   signal?: AbortSignal;
   onEvent?: AgentLoopEventHandler;
