@@ -41,6 +41,25 @@ export interface AIFunctionCallResult<TArguments = unknown> {
   arguments: TArguments;
 }
 
+export interface AIFunctionExecutionContext {
+  callId: string;
+  signal?: AbortSignal;
+}
+
+export interface AIExecutableFunctionDefinition<
+  TArguments = unknown,
+  TOutput = unknown,
+> extends AIFunctionDefinition<TArguments> {
+  execute(
+    arguments_: TArguments,
+    context: AIFunctionExecutionContext,
+  ): TOutput | Promise<TOutput>;
+}
+
+export interface AIFunctionProcessOptions extends AIProcessOptions {
+  maxSteps?: number;
+}
+
 /** Provider-neutral model contract implemented by provider packages. */
 export interface AIProvider {
   readonly provider: AIProviderName;
@@ -57,4 +76,10 @@ export interface AIProvider {
     definition: AIFunctionDefinition<TArguments>,
     options?: Omit<AIProcessOptions, "stream">,
   ): Promise<AIFunctionCallResult<TArguments>>;
+
+  processWithFunctions(
+    input: string,
+    definitions: readonly AIExecutableFunctionDefinition[],
+    options?: AIFunctionProcessOptions,
+  ): Promise<AIProcessResult>;
 }

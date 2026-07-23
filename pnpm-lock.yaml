@@ -217,17 +217,44 @@ importers:
         specifier: ^7.0.0
         version: 7.0.2
 
-  packages/app:
+  packages/action-cli:
     dependencies:
       '@agent-os/core':
         specifier: workspace:*
         version: link:../..
+
+  packages/agent-loop:
+    dependencies:
+      '@agent-os/core':
+        specifier: workspace:*
+        version: link:../..
+
+  packages/app:
+    dependencies:
+      '@agent-os/action-cli':
+        specifier: workspace:*
+        version: link:../action-cli
+      '@agent-os/agent-loop':
+        specifier: workspace:*
+        version: link:../agent-loop
+      '@agent-os/core':
+        specifier: workspace:*
+        version: link:../..
+      '@agent-os/discovery-memory':
+        specifier: workspace:*
+        version: link:../discovery-memory
       '@agent-os/io-cli':
         specifier: workspace:*
         version: link:../io-cli
       '@agent-os/openai':
         specifier: workspace:*
         version: link:../openai
+
+  packages/discovery-memory:
+    dependencies:
+      '@agent-os/core':
+        specifier: workspace:*
+        version: link:../..
 
   packages/io-cli:
     dependencies:

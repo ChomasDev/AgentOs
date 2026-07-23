@@ -1,6 +1,15 @@
 export type {
+  AgentLoop,
+  AgentLoopEvent,
+  AgentLoopEventHandler,
+  AgentLoopOptions,
+} from "./agent/agent-loop.js";
+export type {
   AIFunctionCallResult,
   AIFunctionDefinition,
+  AIFunctionExecutionContext,
+  AIFunctionProcessOptions,
+  AIExecutableFunctionDefinition,
   AIModelSettings,
   AIProcessOptions,
   AIProcessResult,
@@ -16,6 +25,10 @@ export type {
   Capability,
   CapabilityExecutionContext,
 } from "./capabilities/capability.js";
+export type {
+  CapabilityDiscovery,
+  CapabilityDiscoveryQuery,
+} from "./capabilities/capability-discovery.js";
 export type {
   CapabilityManifest,
   JsonSchema,

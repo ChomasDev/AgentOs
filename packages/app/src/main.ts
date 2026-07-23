@@ -1,3 +1,6 @@
+import { RunCLICommandCapability } from "@agent-os/action-cli";
+import { DefaultAgentLoop } from "@agent-os/agent-loop";
+import { InMemoryCapabilityDiscovery } from "@agent-os/discovery-memory";
 import { CLIInput, CLIOutput } from "@agent-os/io-cli";
 import { OpenAIProvider } from "@agent-os/openai";
 import { fileURLToPath } from "node:url";
@@ -6,6 +9,9 @@ import OS from "./Os/index.js";
 
 const envFilePath = fileURLToPath(
   new URL("../../../.env", import.meta.url),
+);
+const repositoryRoot = fileURLToPath(
+  new URL("../../../", import.meta.url),
 );
 
 try {
@@ -30,16 +36,28 @@ const model = new OpenAIProvider({
 });
 const input = new CLIInput();
 const output = new CLIOutput();
+const capabilityDiscovery = new InMemoryCapabilityDiscovery();
+
+await capabilityDiscovery.register(
+  new RunCLICommandCapability({
+    cwd: repositoryRoot,
+  }),
+);
+const agentLoop = new DefaultAgentLoop({
+  model,
+  capabilityDiscovery,
+});
 
 const os = new OS();
 
 os.boot({
-  model,
+  agentLoop,
   input,
   output,
   settings: {
     agentic: true,
     stream: process.env.AI_STREAM !== "false",
+    showSteps: process.env.AI_SHOW_STEPS !== "false",
   },
 });
 

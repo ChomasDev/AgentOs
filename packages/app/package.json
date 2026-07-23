@@ -9,7 +9,10 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@agent-os/action-cli": "workspace:*",
+    "@agent-os/agent-loop": "workspace:*",
     "@agent-os/core": "workspace:*",
+    "@agent-os/discovery-memory": "workspace:*",
     "@agent-os/io-cli": "workspace:*",
     "@agent-os/openai": "workspace:*"
   }

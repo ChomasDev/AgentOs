@@ -2,10 +2,19 @@ import {
   createOpenAI,
   type OpenAIProviderSettings,
 } from "@ai-sdk/openai";
-import { generateText, jsonSchema, streamText, tool } from "ai";
+import {
+  generateText,
+  jsonSchema,
+  stepCountIs,
+  streamText,
+  tool,
+  type ToolSet,
+} from "ai";
 import type {
   AIFunctionCallResult,
   AIFunctionDefinition,
+  AIFunctionProcessOptions,
+  AIExecutableFunctionDefinition,
   AIModelSettings,
   AIProcessOptions,
   AIProcessResult,
@@ -123,6 +132,36 @@ export class OpenAIProvider implements AIProvider {
       arguments: call.input as TArguments,
     };
   }
+
+  async processWithFunctions(
+    input: string,
+    definitions: readonly AIExecutableFunctionDefinition[],
+    options: AIFunctionProcessOptions = {},
+  ): Promise<AIProcessResult> {
+    if (definitions.length === 0) {
+      return this.processInput(input, options);
+    }
+
+    const request = {
+      model: this.languageModel,
+      prompt: validateInput(input),
+      instructions: options.instructions,
+      ...toCallSettings(resolveSettings(this.settings, options.settings)),
+      abortSignal: options.signal,
+      tools: createExecutableTools(definitions),
+      stopWhen: stepCountIs(Math.max(1, options.maxSteps ?? 5)),
+    };
+
+    if (options.stream) {
+      return {
+        type: "stream",
+        stream: streamText(request).textStream,
+      };
+    }
+
+    const result = await generateText(request);
+    return { type: "text", text: result.text };
+  }
 }
 
 export { OpenAIProvider as AIOpenAIProvider };
@@ -160,4 +199,31 @@ function toCallSettings(settings: AIModelSettings) {
       ? { timeout: settings.timeoutMs }
       : {}),
   };
+}
+
+function createExecutableTools(
+  definitions: readonly AIExecutableFunctionDefinition[],
+): ToolSet {
+  const tools: ToolSet = {};
+
+  for (const definition of definitions) {
+    if (!/^[a-zA-Z0-9_-]+$/.test(definition.name)) {
+      throw new Error(`Invalid AI function name: "${definition.name}"`);
+    }
+
+    tools[definition.name] = tool({
+      description: definition.description,
+      inputSchema: jsonSchema(
+        definition.inputSchema as Parameters<typeof jsonSchema>[0],
+      ),
+      strict: definition.strict ?? true,
+      execute: (arguments_, context) =>
+        definition.execute(arguments_, {
+          callId: context.toolCallId,
+          signal: context.abortSignal,
+        }),
+    });
+  }
+
+  return tools;
 }
