@@ -13,6 +13,7 @@ import {
 } from "@agent-os/input-cronjob";
 import { CLIInput, CLIOutput } from "@agent-os/io-cli";
 import { OpenAIProvider } from "@agent-os/openai";
+import type { InputInterface } from "@agent-os/core/domain";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import OS from "./Os/index.js";
@@ -35,13 +36,6 @@ const cronjobs = new CronjobInput({
     resolve(repositoryRoot, ".agent-os/cronjobs.sqlite"),
   ),
 });
-if (!cronjobs.getCronjob("test2")) {
-  cronjobs.addCronjob({
-    cronExpression: "* * * * *",
-    name: "test2",
-    prompt: "What is the current time?",
-  });
-}
 const os = new OS();
 let shuttingDown = false;
 
@@ -57,15 +51,22 @@ const shutdown = () => {
   });
 };
 
-const hasCliArguments = process.argv
-  .slice(2)
-  .some((value) => value !== "--" && value.trim() !== "");
-const inputs = [
-  ...(process.stdin.isTTY || hasCliArguments
-    ? [new CLIInput({ onInterrupt: shutdown })]
-    : []),
-  cronjobs,
-];
+function shouldEnableCliInput(): boolean {
+  if (process.stdin.isTTY) {
+    // Interactive terminal: read prompts from the keyboard.
+    return true;
+  }
+
+  // Non-interactive (piped) stdin: only enable CLI for a one-shot argv prompt.
+  return process.argv
+    .slice(2)
+    .some((value) => value !== "--" && value.trim() !== "");
+}
+
+const inputs: InputInterface[] = [cronjobs];
+if (shouldEnableCliInput()) {
+  inputs.unshift(new CLIInput({ onInterrupt: shutdown }));
+}
 const output = new CLIOutput();
 const capabilityDiscovery = new InMemoryCapabilityDiscovery();
 
