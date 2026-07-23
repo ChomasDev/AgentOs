@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@agent-os/action-cli": "workspace:*",
+    "@agent-os/action-perplexityserach": "workspace:*",
     "@agent-os/agent-loop": "workspace:*",
     "@agent-os/core": "workspace:*",
     "@agent-os/discovery-memory": "workspace:*",

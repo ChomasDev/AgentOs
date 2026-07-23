@@ -223,6 +223,15 @@ importers:
         specifier: workspace:*
         version: link:../../..
 
+  packages/action/perplexityserach:
+    dependencies:
+      '@agent-os/core':
+        specifier: workspace:*
+        version: link:../../..
+      '@perplexity-ai/perplexity_ai':
+        specifier: ^0.36.0
+        version: 0.36.0
+
   packages/agent/loop:
     dependencies:
       '@agent-os/core':
@@ -246,6 +255,9 @@ importers:
       '@agent-os/action-cli':
         specifier: workspace:*
         version: link:../action/cli
+      '@agent-os/action-perplexityserach':
+        specifier: workspace:*
+        version: link:../action/perplexityserach
       '@agent-os/agent-loop':
         specifier: workspace:*
         version: link:../agent/loop
@@ -263,12 +275,6 @@ importers:
         version: link:../ai/openai
 
   packages/discovery/memory:
-    dependencies:
-      '@agent-os/core':
-        specifier: workspace:*
-        version: link:../../..
-
-  packages/input/express:
     dependencies:
       '@agent-os/core':
         specifier: workspace:*
@@ -461,6 +467,9 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@perplexity-ai/perplexity_ai@0.36.0':
+    resolution: {integrity: sha512-vcxjdIcZaZasPymHt7EQQfeWlpjU5lkGJg6DGsgm+azAUn5dAX0riaT+1mAF9jn7qN067IXhVyn8MpsS5KLIyg==}
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
@@ -738,6 +747,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.1':
     optional: true
+
+  '@perplexity-ai/perplexity_ai@0.36.0': {}
 
   '@standard-schema/spec@1.1.0': {}
 

@@ -1,4 +1,5 @@
 import { RunCLICommandCapability } from "@agent-os/action-cli";
+import { PerplexitySearchCapability } from "@agent-os/action-perplexityserach";
 import { DefaultAgentLoop } from "@agent-os/agent-loop";
 import { InMemoryCapabilityDiscovery } from "@agent-os/discovery-memory";
 import { CLIInput, CLIOutput } from "@agent-os/io-cli";
@@ -43,6 +44,18 @@ await capabilityDiscovery.register(
     cwd: repositoryRoot,
   }),
 );
+
+const perplexityApiKey = process.env.PERPLEXITY_API_KEY;
+
+
+if (perplexityApiKey) {
+  await capabilityDiscovery.register(
+    new PerplexitySearchCapability({
+      apiKey: perplexityApiKey,
+    }),
+  );
+}
+
 const agentLoop = new DefaultAgentLoop({
   model,
   capabilityDiscovery,

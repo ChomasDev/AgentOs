@@ -71,6 +71,7 @@ scripts/mockups/
 | --- | --- |
 | `@agent-os/io-cli` | input (+ CLI output in same package) |
 | `@agent-os/action-cli` | action |
+| `@agent-os/action-perplexityserach` | action |
 | `@agent-os/openai` | ai |
 | `@agent-os/discovery-memory` | discovery |
 | `@agent-os/agent-loop` | agent |
@@ -83,4 +84,11 @@ pnpm addCapability   # scaffold a new adapter
 pnpm build           # build core + packages
 pnpm dev             # run the app
 pnpm start           # start the app
+```
+
+Set `PERPLEXITY_API_KEY` in `.env` to register the optional `web.search`
+capability. You can test it in the main app with a prompt such as:
+
+```text
+Search the web for the latest TypeScript release.
 ```
