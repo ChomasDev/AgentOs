@@ -15,7 +15,6 @@ export interface CapabilityMetrics {
 
 interface CapabilityResultBase {
   artifacts?: readonly DataArtifact[];
-  metrics?: CapabilityMetrics;
 }
 
 export interface CapabilitySuccess<T> extends CapabilityResultBase {
@@ -28,6 +27,4 @@ export interface CapabilityFailure extends CapabilityResultBase {
   error: CapabilityError;
 }
 
-export type CapabilityResult<T = unknown> =
-  | CapabilitySuccess<T>
-  | CapabilityFailure;
+export type CapabilityResult<T = unknown> = CapabilitySuccess<T> | CapabilityFailure;

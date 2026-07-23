@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "start": "tsx src/main.ts"
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@agent-os/core": "workspace:*",
+    "@agent-os/io-cli": "workspace:*",
     "@agent-os/openai": "workspace:*"
   }
 }

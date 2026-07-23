@@ -222,9 +222,18 @@ importers:
       '@agent-os/core':
         specifier: workspace:*
         version: link:../..
+      '@agent-os/io-cli':
+        specifier: workspace:*
+        version: link:../io-cli
       '@agent-os/openai':
         specifier: workspace:*
         version: link:../openai
+
+  packages/io-cli:
+    dependencies:
+      '@agent-os/core':
+        specifier: workspace:*
+        version: link:../..
 
   packages/openai:
     dependencies:
