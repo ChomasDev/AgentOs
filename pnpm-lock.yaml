@@ -217,62 +217,62 @@ importers:
         specifier: ^7.0.0
         version: 7.0.2
 
-  packages/action-cli:
+  packages/action/cli:
     dependencies:
       '@agent-os/core':
         specifier: workspace:*
-        version: link:../..
+        version: link:../../..
 
-  packages/agent-loop:
+  packages/agent/loop:
     dependencies:
       '@agent-os/core':
         specifier: workspace:*
-        version: link:../..
+        version: link:../../..
 
-  packages/app:
-    dependencies:
-      '@agent-os/action-cli':
-        specifier: workspace:*
-        version: link:../action-cli
-      '@agent-os/agent-loop':
-        specifier: workspace:*
-        version: link:../agent-loop
-      '@agent-os/core':
-        specifier: workspace:*
-        version: link:../..
-      '@agent-os/discovery-memory':
-        specifier: workspace:*
-        version: link:../discovery-memory
-      '@agent-os/io-cli':
-        specifier: workspace:*
-        version: link:../io-cli
-      '@agent-os/openai':
-        specifier: workspace:*
-        version: link:../openai
-
-  packages/discovery-memory:
+  packages/ai/openai:
     dependencies:
       '@agent-os/core':
         specifier: workspace:*
-        version: link:../..
-
-  packages/io-cli:
-    dependencies:
-      '@agent-os/core':
-        specifier: workspace:*
-        version: link:../..
-
-  packages/openai:
-    dependencies:
-      '@agent-os/core':
-        specifier: workspace:*
-        version: link:../..
+        version: link:../../..
       '@ai-sdk/openai':
         specifier: ^4.0.17
         version: 4.0.17(zod@4.4.3)
       ai:
         specifier: ^7.0.34
         version: 7.0.34(zod@4.4.3)
+
+  packages/app:
+    dependencies:
+      '@agent-os/action-cli':
+        specifier: workspace:*
+        version: link:../action/cli
+      '@agent-os/agent-loop':
+        specifier: workspace:*
+        version: link:../agent/loop
+      '@agent-os/core':
+        specifier: workspace:*
+        version: link:../..
+      '@agent-os/discovery-memory':
+        specifier: workspace:*
+        version: link:../discovery/memory
+      '@agent-os/io-cli':
+        specifier: workspace:*
+        version: link:../input/io-cli
+      '@agent-os/openai':
+        specifier: workspace:*
+        version: link:../ai/openai
+
+  packages/discovery/memory:
+    dependencies:
+      '@agent-os/core':
+        specifier: workspace:*
+        version: link:../../..
+
+  packages/input/io-cli:
+    dependencies:
+      '@agent-os/core':
+        specifier: workspace:*
+        version: link:../../..
 
   packages/utils: {}
 
