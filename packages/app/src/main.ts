@@ -28,7 +28,7 @@ const model = new OpenAIProvider({
   env,
   model: env.getOrDefault("OPENAI_MODEL", "gpt-5.6"),
 });
-const input = new CLIInput();
+const inputs = [new CLIInput()];
 const output = new CLIOutput();
 const capabilityDiscovery = new InMemoryCapabilityDiscovery();
 
@@ -55,7 +55,7 @@ const os = new OS();
 os.boot({
   agentLoop,
   env,
-  input,
+  input: inputs,
   output,
   settings: {
     agentic: true,

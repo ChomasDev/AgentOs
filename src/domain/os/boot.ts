@@ -6,7 +6,7 @@ import type { OutputInterface } from "../output/output-interface.js";
 export interface OSBootOptions {
   agentLoop: AgentLoop;
   env: Environment;
-  input: InputInterface;
+  input: readonly InputInterface[];
   output: OutputInterface;
   settings: {
     agentic: boolean;

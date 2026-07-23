@@ -1,14 +1,20 @@
-import type { OSBootOptions } from "@agent-os/core/domain";
+import type {
+  InputMessage,
+  OSBootOptions,
+} from "@agent-os/core/domain";
 import { formatAgentLoopEvent } from "../utils/format-agent-loop-event.js";
 
 export default class OS {
   private bootOptions?: OSBootOptions;
   private listening = false;
 
-  // given the Ai, memroy, actionDiscovery,agent loop, Input and output make the Os boot with that
   public boot(bootOption: OSBootOptions): void {
     if (this.bootOptions) {
       throw new Error("Agent OS is already booted");
+    }
+
+    if (bootOption.input.length === 0) {
+      throw new Error("Agent OS requires at least one input");
     }
 
     this.bootOptions = bootOption;
@@ -27,29 +33,55 @@ export default class OS {
 
     this.listening = true;
 
-    try {
-      await bootOptions.input.start(async (message) => {
-        const response = await bootOptions.agentLoop.run(message, {
-          stream: bootOptions.settings.stream,
-          onEvent: bootOptions.settings.showSteps
-            ? (event) =>
-                bootOptions.output.write(
-                  formatAgentLoopEvent(event, bootOptions.env),
-                )
-            : undefined,
-        });
-
-        await bootOptions.output.write(
-          response.type === "text" ? response.text : response.stream,
-        );
+    const listener = async (message: InputMessage) => {
+      const response = await bootOptions.agentLoop.run(message, {
+        stream: bootOptions.settings.stream,
+        onEvent: bootOptions.settings.showSteps
+          ? (event) =>
+              bootOptions.output.write(
+                formatAgentLoopEvent(event, bootOptions.env),
+              )
+          : undefined,
       });
+
+      await bootOptions.output.write(
+        response.type === "text" ? response.text : response.stream,
+      );
+    };
+
+    try {
+      await Promise.all(
+        bootOptions.input.map((input) => input.start(listener)),
+      );
+    } catch (error) {
+      await Promise.allSettled(
+        bootOptions.input.map((input) => input.stop()),
+      );
+      throw error;
     } finally {
       this.listening = false;
     }
   }
 
   public async stopListener(): Promise<void> {
-    await this.bootOptions?.input.stop();
-    this.listening = false;
+    const inputs = this.bootOptions?.input ?? [];
+
+    try {
+      const results = await Promise.allSettled(
+        inputs.map((input) => input.stop()),
+      );
+      const errors = results
+        .filter(
+          (result): result is PromiseRejectedResult =>
+            result.status === "rejected",
+        )
+        .map((result) => result.reason);
+
+      if (errors.length > 0) {
+        throw new AggregateError(errors, "Failed to stop Agent OS inputs");
+      }
+    } finally {
+      this.listening = false;
+    }
   }
 }

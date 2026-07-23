@@ -18,6 +18,10 @@ Each adapter package implements one domain interface:
 
 **Capability (`action`)** is the one that exposes a callable tool with a manifest (`id`, `name`, schemas, tags). The other kinds wire the OS around those tools.
 
+`OSBootOptions.input` is a vector of input adapters. The OS starts every input
+concurrently, so long-running sources such as cron jobs, HTTP listeners, and
+the CLI can feed the same agent loop.
+
 Domain types are exported from `@agent-os/core/domain` (see `src/domain/`).
 
 ## Create a new adapter
