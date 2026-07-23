@@ -54,8 +54,6 @@ export type {
   RunFinishedEvent,
   RunStartedEvent,
 } from "./execution/execution-event.js";
-export type { GoalConstraint } from "./goals/constraints.js";
-export type { ExpectedOutput, Goal } from "./goals/goal.js";
 export type {
   InputChannel,
   InputInterface,
