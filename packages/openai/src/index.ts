@@ -1,0 +1,163 @@
+import {
+  createOpenAI,
+  type OpenAIProviderSettings,
+} from "@ai-sdk/openai";
+import { generateText, jsonSchema, streamText, tool } from "ai";
+import type {
+  AIFunctionCallResult,
+  AIFunctionDefinition,
+  AIModelSettings,
+  AIProcessOptions,
+  AIProcessResult,
+  AIProvider,
+} from "@agent-os/core/domain";
+
+export interface OpenAIProviderOptions {
+  model: string;
+  apiKey?: string;
+  settings?: AIModelSettings;
+  baseURL?: string;
+  organization?: string;
+  project?: string;
+  headers?: Record<string, string>;
+  fetch?: OpenAIProviderSettings["fetch"];
+}
+
+export class OpenAIProvider implements AIProvider {
+  readonly provider = "openai" as const;
+  readonly model: string;
+  readonly settings: Readonly<AIModelSettings>;
+
+  private readonly languageModel: ReturnType<
+    ReturnType<typeof createOpenAI>
+  >;
+
+  constructor(options: OpenAIProviderOptions) {
+    const model = options.model.trim();
+
+    if (!model) {
+      throw new Error("OpenAI model is required");
+    }
+
+    this.model = model;
+    this.settings = Object.freeze({ ...options.settings });
+    this.languageModel = createOpenAI({
+      apiKey: options.apiKey,
+      baseURL: options.baseURL,
+      organization: options.organization,
+      project: options.project,
+      headers: options.headers,
+      fetch: options.fetch,
+    })(model);
+  }
+
+  async processInput(
+    input: string,
+    options: AIProcessOptions = {},
+  ): Promise<AIProcessResult> {
+    const request = {
+      model: this.languageModel,
+      prompt: validateInput(input),
+      instructions: options.instructions,
+      ...toCallSettings(resolveSettings(this.settings, options.settings)),
+      abortSignal: options.signal,
+    };
+
+    if (options.stream) {
+      return {
+        type: "stream",
+        stream: streamText(request).textStream,
+      };
+    }
+
+    const result = await generateText(request);
+    return { type: "text", text: result.text };
+  }
+
+  async functionCall<TArguments>(
+    input: string,
+    definition: AIFunctionDefinition<TArguments>,
+    options: Omit<AIProcessOptions, "stream"> = {},
+  ): Promise<AIFunctionCallResult<TArguments>> {
+    if (!/^[a-zA-Z0-9_-]+$/.test(definition.name)) {
+      throw new Error(`Invalid AI function name: "${definition.name}"`);
+    }
+
+    const tools = {
+      [definition.name]: tool({
+        description: definition.description,
+        inputSchema: jsonSchema<TArguments>(
+          definition.inputSchema as Parameters<typeof jsonSchema>[0],
+        ),
+        strict: definition.strict ?? true,
+      }),
+    };
+
+    const result = await generateText({
+      model: this.languageModel,
+      prompt: validateInput(input),
+      instructions: options.instructions,
+      ...toCallSettings(resolveSettings(this.settings, options.settings)),
+      abortSignal: options.signal,
+      tools,
+      toolChoice: {
+        type: "tool",
+        toolName: definition.name,
+      },
+    });
+
+    const call = result.toolCalls.find(
+      (item) => item.toolName === definition.name,
+    );
+
+    if (!call) {
+      throw new Error(
+        `Model did not call the required function "${definition.name}"`,
+      );
+    }
+
+    return {
+      type: "function-call",
+      name: definition.name,
+      callId: call.toolCallId,
+      arguments: call.input as TArguments,
+    };
+  }
+}
+
+export { OpenAIProvider as AIOpenAIProvider };
+
+function validateInput(input: string): string {
+  const normalized = input.trim();
+
+  if (!normalized) {
+    throw new Error("AI input is required");
+  }
+
+  return normalized;
+}
+
+function resolveSettings(
+  defaults: Readonly<AIModelSettings>,
+  overrides?: AIModelSettings,
+): AIModelSettings {
+  return { ...defaults, ...overrides };
+}
+
+function toCallSettings(settings: AIModelSettings) {
+  return {
+    ...(settings.maxOutputTokens !== undefined
+      ? { maxOutputTokens: settings.maxOutputTokens }
+      : {}),
+    ...(settings.temperature !== undefined
+      ? { temperature: settings.temperature }
+      : {}),
+    ...(settings.topP !== undefined ? { topP: settings.topP } : {}),
+    ...(settings.maxRetries !== undefined
+      ? { maxRetries: settings.maxRetries }
+      : {}),
+    ...(settings.timeoutMs !== undefined
+      ? { timeout: settings.timeoutMs }
+      : {}),
+  };
+}
