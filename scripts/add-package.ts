@@ -16,6 +16,7 @@ type Kind =
   | "output"
   | "action"
   | "ai"
+  | "env"
   | "discovery"
   | "agent";
 
@@ -55,6 +56,12 @@ const KINDS: Record<Kind, KindConfig> = {
     label: "AIProvider",
     packagePrefix: "ai",
     classSuffix: "Provider",
+  },
+  env: {
+    folder: "env",
+    label: "Environment",
+    packagePrefix: "env",
+    classSuffix: "Environment",
   },
   discovery: {
     folder: "discovery",

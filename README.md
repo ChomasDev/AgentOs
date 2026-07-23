@@ -12,6 +12,7 @@ Each adapter package implements one domain interface:
 | `output` | `OutputInterface` | `packages/output/<name>` | `@agent-os/output-<name>` | Writes agent responses to a destination |
 | `action` | `Capability` | `packages/action/<name>` | `@agent-os/action-<name>` | A tool the agent can call (run a command, hit an API, …) |
 | `ai` | `AIProvider` | `packages/ai/<name>` | `@agent-os/ai-<name>` | Model provider (OpenAI, Claude, local, …) |
+| `env` | `Environment` | `packages/env/<name>` | `@agent-os/env-<name>` | Reads configuration and secrets from process env, dotenv, maps, vaults, … |
 | `discovery` | `CapabilityDiscovery` | `packages/discovery/<name>` | `@agent-os/discovery-<name>` | Registry that finds/registers capabilities |
 | `agent` | `AgentLoop` | `packages/agent/<name>` | `@agent-os/agent-<name>` | Orchestrates discovery → model → capability calls |
 
@@ -36,6 +37,7 @@ Non-interactive:
 ```bash
 pnpm addCapability --kind action --name web -y
 pnpm addCapability -k input -n express -y
+pnpm addCapability -k env -n vault -y
 ```
 
 ### What gets created
@@ -73,9 +75,27 @@ scripts/mockups/
 | `@agent-os/action-cli` | action |
 | `@agent-os/action-perplexityserach` | action |
 | `@agent-os/openai` | ai |
+| `@agent-os/env-node` | env |
 | `@agent-os/discovery-memory` | discovery |
 | `@agent-os/agent-loop` | agent |
 | `@agent-os/app` | composition root |
+
+## Environment
+
+`@agent-os/env-node` provides process, dotenv, map, and composite
+implementations of the core `Environment` interface. The main app composes
+process variables over the repository `.env` file, so exported variables take
+precedence:
+
+```ts
+const env = new CompositeEnvironment([
+  new ProcessEnvironment(),
+  new DotenvEnvironment({ filePath: ".env" }),
+]);
+```
+
+OpenAI, Perplexity, CLI child processes, OS settings, and terminal formatting
+all receive configuration through this environment instance.
 
 ## Scripts
 

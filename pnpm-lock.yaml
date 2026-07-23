@@ -267,6 +267,9 @@ importers:
       '@agent-os/discovery-memory':
         specifier: workspace:*
         version: link:../discovery/memory
+      '@agent-os/env-node':
+        specifier: workspace:*
+        version: link:../env/node
       '@agent-os/io-cli':
         specifier: workspace:*
         version: link:../input/io-cli
@@ -275,6 +278,12 @@ importers:
         version: link:../ai/openai
 
   packages/discovery/memory:
+    dependencies:
+      '@agent-os/core':
+        specifier: workspace:*
+        version: link:../../..
+
+  packages/env/node:
     dependencies:
       '@agent-os/core':
         specifier: workspace:*

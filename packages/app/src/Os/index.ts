@@ -33,7 +33,9 @@ export default class OS {
           stream: bootOptions.settings.stream,
           onEvent: bootOptions.settings.showSteps
             ? (event) =>
-                bootOptions.output.write(formatAgentLoopEvent(event))
+                bootOptions.output.write(
+                  formatAgentLoopEvent(event, bootOptions.env),
+                )
             : undefined,
         });
 

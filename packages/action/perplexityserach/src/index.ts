@@ -4,6 +4,7 @@ import type {
   CapabilityExecutionContext,
   CapabilityManifest,
   CapabilityResult,
+  Environment,
 } from "@agent-os/core/domain";
 
 export interface PerplexitySearchInput {
@@ -38,8 +39,8 @@ export interface PerplexitySearchClient {
 }
 
 export interface PerplexitySearchCapabilityOptions {
-  apiKey?: string;
   client?: PerplexitySearchClient;
+  env: Environment;
 }
 
 const manifest: CapabilityManifest = {
@@ -159,19 +160,21 @@ export class PerplexitySearchCapability
 
   private readonly client: PerplexitySearchClient;
 
-  constructor(options: PerplexitySearchCapabilityOptions = {}) {
+  constructor(options: PerplexitySearchCapabilityOptions) {
     if (options.client) {
       this.client = options.client;
       return;
     }
 
-    if (!options.apiKey) {
+    const apiKey = options.env.get("PERPLEXITY_API_KEY");
+
+    if (!apiKey) {
       throw new Error(
         "PERPLEXITY_API_KEY is required for PerplexitySearchCapability",
       );
     }
 
-    this.client = new Perplexity({ apiKey: options.apiKey });
+    this.client = new Perplexity({ apiKey });
   }
 
   async execute(

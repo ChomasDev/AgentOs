@@ -45,6 +45,7 @@ export type {
   CapabilityCall,
   CapabilityCallOutcome,
 } from "./execution/capability-call.js";
+export type { Environment, EnvPort } from "./env/environment.js";
 export type { ExecutionContext } from "./execution/execution-context.js";
 export type {
   CapabilityCalledEvent,

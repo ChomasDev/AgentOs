@@ -4,6 +4,7 @@ import type {
   CapabilityExecutionContext,
   CapabilityManifest,
   CapabilityResult,
+  Environment,
 } from "@agent-os/core/domain";
 
 export interface RunCLICommandInput {
@@ -19,6 +20,7 @@ export interface RunCLICommandOutput {
 export interface RunCLICommandCapabilityOptions {
   allowedCommands?: readonly string[];
   cwd?: string;
+  env: Environment;
   timeoutMs?: number;
 }
 
@@ -94,13 +96,15 @@ export class RunCLICommandCapability
 
   private readonly allowedCommands: ReadonlySet<string>;
   private readonly cwd?: string;
+  private readonly env: Environment;
   private readonly timeoutMs: number;
 
-  constructor(options: RunCLICommandCapabilityOptions = {}) {
+  constructor(options: RunCLICommandCapabilityOptions) {
     this.allowedCommands = new Set(
       options.allowedCommands ?? defaultAllowedCommands,
     );
     this.cwd = options.cwd;
+    this.env = options.env;
     this.timeoutMs =
       options.timeoutMs ?? manifest.execution?.timeoutMs ?? 5_000;
   }
@@ -127,6 +131,7 @@ export class RunCLICommandCapability
         command,
         args: input.args,
         cwd: this.cwd,
+        env: this.env.getAll(),
         timeoutMs: this.timeoutMs,
         signal: context.signal,
       });
@@ -155,6 +160,7 @@ interface ExecuteFileOptions {
   command: string;
   args: readonly string[];
   cwd?: string;
+  env?: NodeJS.ProcessEnv;
   timeoutMs: number;
   signal?: AbortSignal;
 }
@@ -168,6 +174,7 @@ function executeFile(
       [...options.args],
       {
         cwd: options.cwd,
+        env: options.env,
         timeout: options.timeoutMs,
         signal: options.signal,
         encoding: "utf8",

@@ -19,11 +19,12 @@ import type {
   AIProcessOptions,
   AIProcessResult,
   AIProvider,
+  Environment,
 } from "@agent-os/core/domain";
 
 export interface OpenAIProviderOptions {
   model: string;
-  apiKey?: string;
+  env: Environment;
   settings?: AIModelSettings;
   baseURL?: string;
   organization?: string;
@@ -50,8 +51,14 @@ export class OpenAIProvider implements AIProvider {
 
     this.model = model;
     this.settings = Object.freeze({ ...options.settings });
+    const apiKey = options.env.get("OPENAI_API_KEY");
+
+    if (!apiKey) {
+      throw new Error("OPENAI_API_KEY is required for OpenAIProvider");
+    }
+
     this.languageModel = createOpenAI({
-      apiKey: options.apiKey,
+      apiKey,
       baseURL: options.baseURL,
       organization: options.organization,
       project: options.project,
