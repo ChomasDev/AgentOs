@@ -85,7 +85,7 @@ scripts/mockups/
 | `@agent-os/openai` | ai |
 | `@agent-os/env-node` | env |
 | `@agent-os/discovery-memory` | discovery |
-| `@agent-os/orchestrator` | orchestrator |
+| `@agent-os/orchestrator-default` | orchestrator |
 | `@agent-os/agent-loop` | agent |
 | `@agent-os/app` | composition root |
 
@@ -108,7 +108,7 @@ all receive configuration through this environment instance.
 
 ## Orchestration
 
-`ModelOrchestrator` uses the OS model before the agent loop runs. It receives
+`DefaultOrchestrator` uses the OS model before the agent loop runs. It receives
 the current message and chat metadata, available capability manifests, and
 configured output channels. Its structured decision chooses:
 

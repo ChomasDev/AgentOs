@@ -10,7 +10,7 @@ import type {
   OutputInterface,
 } from "@agent-os/core/domain";
 
-export interface ModelOrchestratorOptions {
+export interface DefaultOrchestratorOptions {
   model: AIProvider;
   capabilityDiscovery: CapabilityDiscovery;
   maxCapabilities?: number;
@@ -31,13 +31,13 @@ const defaultInstructions = [
   "Prefer the output matching the input channel or conversation unless the message or metadata clearly requests another destination.",
 ].join(" ");
 
-export class ModelOrchestrator implements Orchestrator {
+export class DefaultOrchestrator implements Orchestrator {
   private readonly model: AIProvider;
   private readonly capabilityDiscovery: CapabilityDiscovery;
   private readonly maxCapabilities: number;
   private readonly instructions: string;
 
-  constructor(options: ModelOrchestratorOptions) {
+  constructor(options: DefaultOrchestratorOptions) {
     this.model = options.model;
     this.capabilityDiscovery = options.capabilityDiscovery;
     this.maxCapabilities = Math.max(0, options.maxCapabilities ?? 8);
@@ -50,7 +50,7 @@ export class ModelOrchestrator implements Orchestrator {
     options: OrchestratorOptions = {},
   ): Promise<OrchestrationDecision> {
     if (outputs.length === 0) {
-      throw new Error("ModelOrchestrator requires at least one output");
+      throw new Error("DefaultOrchestrator requires at least one output");
     }
 
     const candidates = await this.capabilityDiscovery.discover();
@@ -201,4 +201,6 @@ function unique<T>(values: readonly T[]): T[] {
   return [...new Set(values)];
 }
 
-export { ModelOrchestrator as DefaultOrchestrator };
+/** @deprecated Use DefaultOrchestrator. */
+export { DefaultOrchestrator as ModelOrchestrator };
+export type ModelOrchestratorOptions = DefaultOrchestratorOptions;

@@ -13,7 +13,7 @@ import {
 } from "@agent-os/input-cronjob";
 import { CLIInput, CLIOutput } from "@agent-os/io-cli";
 import { OpenAIProvider } from "@agent-os/openai";
-import { ModelOrchestrator } from "@agent-os/orchestrator";
+import { DefaultOrchestrator } from "@agent-os/orchestrator-default";
 import type { InputInterface } from "@agent-os/core/domain";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -90,7 +90,7 @@ const agentLoop = new DefaultAgentLoop({
   model,
   capabilityDiscovery,
 });
-const orchestrator = new ModelOrchestrator({
+const orchestrator = new DefaultOrchestrator({
   model,
   capabilityDiscovery,
 });
