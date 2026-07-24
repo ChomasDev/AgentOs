@@ -18,3 +18,6 @@ export interface Capability<TInput = unknown, TOutput = unknown> {
     context: CapabilityExecutionContext,
   ): Promise<CapabilityResult<TOutput>>;
 }
+
+
+export type CapabilityType = "action" | "agent" | "orchestrator" | "discovery" | "ai" | "env" | "input" | "output";

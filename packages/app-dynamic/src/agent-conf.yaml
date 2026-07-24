@@ -1,0 +1,25 @@
+schemaVersion: 1
+
+interfaces:
+  env:
+    - env-node
+  ai:
+    - ai-codex
+  discovery:
+    - discovery-memory
+  orchestrator:
+    - orchestrator-default
+  agent:
+    - agent-loop
+  input:
+    - io-cli
+    - cronjob
+    - openrouter-api
+  output:
+    - io-cli
+    - openrouter-api
+    - telegram
+  action:
+    - action-cli
+    - perplexity-search
+    - cronjob

@@ -24,6 +24,7 @@ export type {
 export type {
   Capability,
   CapabilityExecutionContext,
+  CapabilityType,
 } from "./capabilities/capability.js";
 export type {
   CapabilityDiscovery,

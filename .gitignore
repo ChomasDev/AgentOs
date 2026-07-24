@@ -7,6 +7,9 @@ build/
 coverage/
 *.tsbuildinfo
 
+# Dynamically installed capabilities (app-dynamic)
+packages/app-dynamic/capability/
+
 # Environment and secrets
 .env
 .env.*
