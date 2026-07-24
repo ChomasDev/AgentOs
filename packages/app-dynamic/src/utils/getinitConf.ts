@@ -1,20 +1,28 @@
+import type { CapabilityType } from "@agent-os/core/domain";
 import { getOrDownloadCapability } from "./getCapability.js";
 import {
   loadAgentConfYaml,
   type AgentConf,
+  type AgentInterfaceKind,
 } from "./yarml-parser.js";
 
 export type CapabilityModule = Record<string, unknown>;
 
+export interface LoadedPackage {
+  id: string;
+  kind: CapabilityType;
+  module: CapabilityModule;
+}
+
 export interface InitConfModules {
-  input: CapabilityModule[];
-  output: CapabilityModule[];
-  action: CapabilityModule[];
-  agent: CapabilityModule[];
-  orchestrator: CapabilityModule[];
-  discovery: CapabilityModule[];
-  ai: CapabilityModule[];
-  env: CapabilityModule[];
+  input: LoadedPackage[];
+  output: LoadedPackage[];
+  action: LoadedPackage[];
+  agent: LoadedPackage[];
+  orchestrator: LoadedPackage[];
+  discovery: LoadedPackage[];
+  ai: LoadedPackage[];
+  env: LoadedPackage[];
 }
 
 export interface InitConf {
@@ -22,72 +30,32 @@ export interface InitConf {
   modules: InitConfModules;
 }
 
+const KINDS = [
+  "input",
+  "output",
+  "action",
+  "agent",
+  "orchestrator",
+  "discovery",
+  "ai",
+  "env",
+] as const satisfies readonly AgentInterfaceKind[];
+
 export async function getInitConf(agentConfPath: string): Promise<InitConf> {
   const conf = await loadAgentConfYaml(agentConfPath);
+  const modules = {} as InitConfModules;
 
-  const [
-    input,
-    output,
-    action,
-    agent,
-    orchestrator,
-    discovery,
-    ai,
-    env,
-  ] = await Promise.all([
-    Promise.all(
-      conf.interfaces.input.map((capability) =>
-        getOrDownloadCapability(capability, "input"),
-      ),
-    ),
-    Promise.all(
-      conf.interfaces.output.map((capability) =>
-        getOrDownloadCapability(capability, "output"),
-      ),
-    ),
-    Promise.all(
-      conf.interfaces.action.map((capability) =>
-        getOrDownloadCapability(capability, "action"),
-      ),
-    ),
-    Promise.all(
-      conf.interfaces.agent.map((capability) =>
-        getOrDownloadCapability(capability, "agent"),
-      ),
-    ),
-    Promise.all(
-      conf.interfaces.orchestrator.map((capability) =>
-        getOrDownloadCapability(capability, "orchestrator"),
-      ),
-    ),
-    Promise.all(
-      conf.interfaces.discovery.map((capability) =>
-        getOrDownloadCapability(capability, "discovery"),
-      ),
-    ),
-    Promise.all(
-      conf.interfaces.ai.map((capability) =>
-        getOrDownloadCapability(capability, "ai"),
-      ),
-    ),
-    Promise.all(
-      conf.interfaces.env.map((capability) =>
-        getOrDownloadCapability(capability, "env"),
-      ),
-    ),
-  ]);
+  await Promise.all(
+    KINDS.map(async (kind) => {
+      modules[kind] = await Promise.all(
+        conf.interfaces[kind].map(async (id) => ({
+          id,
+          kind,
+          module: await getOrDownloadCapability(id, kind),
+        })),
+      );
+    }),
+  );
 
-  return {
-    conf,
-    modules: {
-      input,
-      output,
-      action,
-      agent,
-      orchestrator,
-      discovery,
-      ai,
-      env,
-    },
-  };
+  return { conf, modules };
 }
