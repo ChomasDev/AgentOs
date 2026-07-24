@@ -12,12 +12,13 @@
     "@agent-os/action-cli": "workspace:*",
     "@agent-os/action-perplexityserach": "workspace:*",
     "@agent-os/agent-loop": "workspace:*",
+    "@agent-os/ai-codex": "workspace:*",
     "@agent-os/core": "workspace:*",
     "@agent-os/discovery-memory": "workspace:*",
     "@agent-os/env-node": "workspace:*",
     "@agent-os/input-cronjob": "workspace:*",
+    "@agent-os/input-openrouter-api": "workspace:*",
     "@agent-os/io-cli": "workspace:*",
-    "@agent-os/openai": "workspace:*",
     "@agent-os/orchestrator-default": "workspace:*"
   }
 }

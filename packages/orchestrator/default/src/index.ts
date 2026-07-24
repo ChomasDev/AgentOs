@@ -25,6 +25,7 @@ interface ModelDecision {
 
 const defaultInstructions = [
   "You route one Agent OS message.",
+  "Consider the complete capability catalog, including capabilities whose names or tags do not obviously match the user's wording.",
   "Select only capabilities that can materially help answer or execute the message.",
   "Use an empty capabilityIds array when no tool is needed.",
   "Choose exactly one available output channel.",
@@ -40,7 +41,7 @@ export class DefaultOrchestrator implements Orchestrator {
   constructor(options: DefaultOrchestratorOptions) {
     this.model = options.model;
     this.capabilityDiscovery = options.capabilityDiscovery;
-    this.maxCapabilities = Math.max(0, options.maxCapabilities ?? 8);
+    this.maxCapabilities = Math.max(0, options.maxCapabilities ?? 50);
     this.instructions = options.instructions ?? defaultInstructions;
   }
 

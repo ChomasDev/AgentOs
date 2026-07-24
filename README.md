@@ -83,6 +83,7 @@ scripts/mockups/
 | `@agent-os/action-cli` | action |
 | `@agent-os/action-perplexityserach` | action |
 | `@agent-os/openai` | ai |
+| `@agent-os/ai-codex` | ai |
 | `@agent-os/env-node` | env |
 | `@agent-os/discovery-memory` | discovery |
 | `@agent-os/orchestrator-default` | orchestrator |
@@ -103,7 +104,7 @@ const env = new CompositeEnvironment([
 ]);
 ```
 
-OpenAI, Perplexity, CLI child processes, OS settings, and terminal formatting
+Codex, Perplexity, CLI child processes, OS settings, and terminal formatting
 all receive configuration through this environment instance.
 
 ## Orchestration
@@ -118,6 +119,10 @@ configured output channels. Its structured decision chooses:
 The decision is validated against the available capabilities and outputs.
 If model routing fails, the orchestrator falls back to text-based capability
 discovery and the preferred, matching-input, or first configured output.
+The orchestrator always considers the complete registered capability catalog
+and can select up to 50 capabilities by default. The agent loop can load the
+same default maximum; both limits remain configurable through their
+`maxCapabilities` constructor option.
 
 ## Cron jobs
 
