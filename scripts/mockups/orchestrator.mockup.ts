@@ -32,6 +32,7 @@ export class __CLASS_NAME__ implements Orchestrator {
     return {
       capabilityIds: [],
       outputChannel: output.channel,
+      additionalOutputs: [],
     };
   }
 }

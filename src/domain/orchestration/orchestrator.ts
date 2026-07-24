@@ -5,9 +5,23 @@ import type {
   OutputInterface,
 } from "../output/output-interface.js";
 
+export interface AdditionalOrchestrationOutput {
+  outputChannel: OutputChannel;
+  /**
+   * `response` copies the agent's generated response to this output.
+   * `text` writes the route's fixed text instead, which is useful for
+   * acknowledging a request on its originating channel.
+   */
+  content: "response" | "text";
+  text?: string;
+}
+
 export interface OrchestrationDecision {
   capabilityIds: readonly string[];
+  /** Primary destination for progress events and the generated response. */
   outputChannel: OutputChannel;
+  /** Extra response copies or channel-specific messages. */
+  additionalOutputs?: readonly AdditionalOrchestrationOutput[];
   reason?: string;
 }
 

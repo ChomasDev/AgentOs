@@ -65,6 +65,7 @@ export type { MemoryEntry, MemoryKind } from "./memory/memory-entry.js";
 export type { MemoryProposal } from "./memory/memory-proposal.js";
 export type { MemoryQuery } from "./memory/memory-query.js";
 export type {
+  AdditionalOrchestrationOutput,
   OrchestrationDecision,
   Orchestrator,
   OrchestratorOptions,

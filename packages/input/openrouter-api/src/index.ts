@@ -698,16 +698,26 @@ async function writeSse(
   });
 
   for await (const chunk of content) {
-    if (chunk) {
+    const chunks = splitStreamingChunk(chunk);
+    for (let index = 0; index < chunks.length; index += 1) {
+      const part = chunks[index];
+      if (!part) {
+        continue;
+      }
+
       writeSseData(context, {
         choices: [
           {
             index: 0,
-            delta: { content: chunk },
+            delta: { content: part },
             finish_reason: null,
           },
         ],
       });
+
+      if (index < chunks.length - 1) {
+        await yieldToEventLoop();
+      }
     }
   }
 
@@ -722,6 +732,42 @@ async function writeSse(
   });
   response.write("data: [DONE]\n\n");
   response.end();
+}
+
+function splitStreamingChunk(value: string, maxLength = 32): string[] {
+  if (value.length <= maxLength) {
+    return value ? [value] : [];
+  }
+
+  const parts: string[] = [];
+  let current = "";
+
+  for (const token of value.match(/\S+\s*|\s+/gu) ?? [value]) {
+    if (current && current.length + token.length > maxLength) {
+      parts.push(current);
+      current = "";
+    }
+
+    if (token.length > maxLength) {
+      const characters = Array.from(token);
+      while (characters.length > maxLength) {
+        parts.push(characters.splice(0, maxLength).join(""));
+      }
+      current = characters.join("");
+    } else {
+      current += token;
+    }
+  }
+
+  if (current) {
+    parts.push(current);
+  }
+
+  return parts;
+}
+
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
 }
 
 function writeSseData(

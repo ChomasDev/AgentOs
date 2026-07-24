@@ -20,7 +20,14 @@ export interface DefaultOrchestratorOptions {
 interface ModelDecision {
   capabilityIds: string[];
   outputChannel: string;
+  additionalOutputs: ModelAdditionalOutput[];
   reason: string;
+}
+
+interface ModelAdditionalOutput {
+  outputChannel: string;
+  content: "response" | "text";
+  text: string;
 }
 
 const defaultInstructions = [
@@ -28,8 +35,12 @@ const defaultInstructions = [
   "Consider the complete capability catalog, including capabilities whose names or tags do not obviously match the user's wording.",
   "Select only capabilities that can materially help answer or execute the message.",
   "Use an empty capabilityIds array when no tool is needed.",
-  "Choose exactly one available output channel.",
-  "Prefer the output matching the input channel or conversation unless the message or metadata clearly requests another destination.",
+  "Choose one primary output channel for the generated response.",
+  "Use additionalOutputs only when the user requests or clearly implies delivery to multiple destinations.",
+  "An additional output with content=response receives a copy of the generated response.",
+  "An additional output with content=text receives its exact text; use this for a short acknowledgement such as 'Okay, done.' on the originating channel when the substantive response is delivered elsewhere.",
+  "When a request from a web/API channel asks to write or prepare a message and a configured messaging channel such as Telegram is available, deliver the substantive response to that messaging channel and acknowledge completion on the originating channel.",
+  "Otherwise prefer the output matching the input channel or conversation unless the message or metadata clearly requests another destination.",
 ].join(" ");
 
 export class DefaultOrchestrator implements Orchestrator {
@@ -79,10 +90,16 @@ export class DefaultOrchestrator implements Orchestrator {
       )
         ? result.arguments.outputChannel
         : fallbackOutput.channel;
+      const additionalOutputs = sanitizeAdditionalOutputs(
+        result.arguments.additionalOutputs,
+        channels,
+        outputChannel,
+      );
 
       return {
         capabilityIds,
         outputChannel,
+        additionalOutputs,
         reason: result.arguments.reason,
       };
     } catch (error) {
@@ -96,6 +113,7 @@ export class DefaultOrchestrator implements Orchestrator {
           (capability) => capability.id,
         ),
         outputChannel: fallbackOutput.channel,
+        additionalOutputs: [],
         reason: `Model routing failed; used deterministic fallback: ${
           error instanceof Error ? error.message : String(error)
         }`,
@@ -133,14 +151,46 @@ function createDecisionFunction(
         outputChannel: {
           type: "string",
           enum: channels,
-          description: "Exactly one available destination channel.",
+          description:
+            "Primary destination for progress and the generated response.",
+        },
+        additionalOutputs: {
+          type: "array",
+          maxItems: Math.max(0, channels.length - 1),
+          description:
+            "Optional extra response copies or fixed channel-specific messages.",
+          items: {
+            type: "object",
+            properties: {
+              outputChannel: {
+                type: "string",
+                enum: channels,
+              },
+              content: {
+                type: "string",
+                enum: ["response", "text"],
+              },
+              text: {
+                type: "string",
+                description:
+                  "Exact message for content=text; use an empty string for content=response.",
+              },
+            },
+            required: ["outputChannel", "content", "text"],
+            additionalProperties: false,
+          },
         },
         reason: {
           type: "string",
           description: "A short operational explanation of the routing choice.",
         },
       },
-      required: ["capabilityIds", "outputChannel", "reason"],
+      required: [
+        "capabilityIds",
+        "outputChannel",
+        "additionalOutputs",
+        "reason",
+      ],
       additionalProperties: false,
     },
   };
@@ -200,6 +250,35 @@ function selectFallbackOutput(
 
 function unique<T>(values: readonly T[]): T[] {
   return [...new Set(values)];
+}
+
+function sanitizeAdditionalOutputs(
+  outputs: readonly ModelAdditionalOutput[] | undefined,
+  channels: readonly string[],
+  primaryChannel: string,
+): ModelAdditionalOutput[] {
+  const availableChannels = new Set(channels);
+  const seenChannels = new Set([primaryChannel]);
+  const sanitized: ModelAdditionalOutput[] = [];
+
+  for (const output of outputs ?? []) {
+    if (
+      !availableChannels.has(output.outputChannel) ||
+      seenChannels.has(output.outputChannel) ||
+      (output.content === "text" && output.text.trim() === "")
+    ) {
+      continue;
+    }
+
+    seenChannels.add(output.outputChannel);
+    sanitized.push({
+      outputChannel: output.outputChannel,
+      content: output.content,
+      text: output.content === "text" ? output.text : "",
+    });
+  }
+
+  return sanitized;
 }
 
 /** @deprecated Use DefaultOrchestrator. */

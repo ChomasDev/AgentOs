@@ -1,4 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
+import { createInterface } from "node:readline";
+import { fileURLToPath } from "node:url";
 import {
   Codex,
   type ApprovalMode,
@@ -6,7 +10,6 @@ import {
   type ModelReasoningEffort,
   type SandboxMode,
   type Thread,
-  type ThreadEvent,
   type WebSearchMode,
 } from "@openai/codex-sdk";
 import type {
@@ -43,6 +46,30 @@ interface FunctionStep {
   text: string | null;
 }
 
+interface CodexAppServerOptions {
+  apiKey?: string;
+  baseUrl?: string;
+  codexPathOverride?: string;
+  config?: CodexOptions["config"];
+  model: string;
+  workingDirectory: string;
+  sandboxMode: SandboxMode;
+  approvalPolicy: ApprovalMode;
+  modelReasoningEffort?: ModelReasoningEffort;
+  networkAccessEnabled: boolean;
+  webSearchMode: WebSearchMode;
+}
+
+interface RpcMessage {
+  id?: number;
+  method?: string;
+  params?: unknown;
+  result?: unknown;
+  error?: {
+    message?: string;
+  };
+}
+
 const providerInstructions = [
   "You are the model inside Agent OS.",
   "Do not inspect or modify the workspace and do not use Codex built-in tools.",
@@ -56,6 +83,7 @@ export class CodexProvider implements AIProvider {
 
   private readonly codex: Codex;
   private readonly threadOptions: Parameters<Codex["startThread"]>[0];
+  private readonly appServerOptions: CodexAppServerOptions;
 
   constructor(options: CodexProviderOptions) {
     const model = options.model.trim();
@@ -82,6 +110,19 @@ export class CodexProvider implements AIProvider {
       networkAccessEnabled: options.networkAccessEnabled ?? false,
       webSearchMode: options.webSearchMode ?? "disabled",
     };
+    this.appServerOptions = {
+      apiKey: options.apiKey,
+      baseUrl: options.baseUrl,
+      codexPathOverride: options.codexPathOverride,
+      config: options.config,
+      model,
+      workingDirectory: options.workingDirectory ?? process.cwd(),
+      sandboxMode: options.sandboxMode ?? "read-only",
+      approvalPolicy: options.approvalPolicy ?? "never",
+      modelReasoningEffort: options.modelReasoningEffort,
+      networkAccessEnabled: options.networkAccessEnabled ?? false,
+      webSearchMode: options.webSearchMode ?? "disabled",
+    };
   }
 
   async processInput(
@@ -94,9 +135,9 @@ export class CodexProvider implements AIProvider {
     if (options.stream) {
       return {
         type: "stream",
-        stream: streamAgentText(
-          thread,
+        stream: streamAppServerText(
           prompt,
+          this.appServerOptions,
           resolveSignal(this.settings, options),
         ),
       };
@@ -369,41 +410,287 @@ function resolveSignal(
   return options.signal ?? timeoutSignal;
 }
 
-async function* streamAgentText(
-  thread: Thread,
+async function* streamAppServerText(
   prompt: string,
+  options: CodexAppServerOptions,
   signal?: AbortSignal,
 ): AsyncGenerator<string> {
-  const { events } = await thread.runStreamed(prompt, { signal });
-  const previousText = new Map<string, string>();
+  signal?.throwIfAborted();
 
-  for await (const event of events) {
-    throwForFailedEvent(event);
+  const invocation = resolveAppServerInvocation(
+    options.codexPathOverride,
+  );
+  const environment = { ...process.env };
+  if (options.apiKey) {
+    environment.CODEX_API_KEY = options.apiKey;
+  }
 
-    if (
-      (event.type === "item.updated" ||
-        event.type === "item.completed") &&
-      event.item.type === "agent_message"
-    ) {
-      const previous = previousText.get(event.item.id) ?? "";
-      const chunk = event.item.text.startsWith(previous)
-        ? event.item.text.slice(previous.length)
-        : event.item.text;
+  const child = spawn(invocation.command, invocation.arguments, {
+    env: environment,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  const lines = createInterface({
+    input: child.stdout,
+    crlfDelay: Infinity,
+  });
+  let childError: Error | undefined;
+  let stderr = "";
+  let threadId: string | undefined;
+  let turnId: string | undefined;
+  const streamedItemIds = new Set<string>();
 
-      previousText.set(event.item.id, event.item.text);
-      if (chunk) {
-        yield chunk;
+  child.once("error", (error) => {
+    childError = error;
+  });
+  child.stderr.on("data", (chunk: Buffer | string) => {
+    if (stderr.length < 16_384) {
+      stderr += String(chunk).slice(0, 16_384 - stderr.length);
+    }
+  });
+
+  const exited = new Promise<{
+    code: number | null;
+    signal: NodeJS.Signals | null;
+  }>((resolve) => {
+    child.once("exit", (code, exitSignal) => {
+      resolve({ code, signal: exitSignal });
+    });
+  });
+  const abort = () => child.kill();
+  signal?.addEventListener("abort", abort, { once: true });
+
+  const send = (message: unknown) => {
+    if (!child.stdin.writable) {
+      throw new Error("Codex app-server stdin is not writable");
+    }
+
+    child.stdin.write(`${JSON.stringify(message)}\n`);
+  };
+
+  try {
+    send({
+      method: "initialize",
+      id: 1,
+      params: {
+        clientInfo: {
+          name: "agent_os",
+          title: "Agent OS",
+          version: "0.1.0",
+        },
+      },
+    });
+
+    for await (const line of lines) {
+      signal?.throwIfAborted();
+      const message = parseRpcMessage(line);
+
+      if (message.error) {
+        throw new Error(
+          message.error.message ?? "Codex app-server request failed",
+        );
       }
+
+      if (message.id === 1) {
+        send({ method: "initialized", params: {} });
+        send({
+          method: "thread/start",
+          id: 2,
+          params: {
+            model: options.model,
+            cwd: options.workingDirectory,
+            approvalPolicy: options.approvalPolicy,
+            sandbox: options.sandboxMode,
+            ephemeral: true,
+            config: {
+              ...options.config,
+              openai_base_url: options.baseUrl,
+              model_reasoning_effort: options.modelReasoningEffort,
+              web_search: options.webSearchMode,
+              sandbox_workspace_write: {
+                network_access: options.networkAccessEnabled,
+              },
+            },
+          },
+        });
+        continue;
+      }
+
+      if (message.id === 2) {
+        threadId = readNestedString(message.result, "thread", "id");
+        if (!threadId) {
+          throw new Error(
+            "Codex app-server did not return a thread id",
+          );
+        }
+
+        send({
+          method: "turn/start",
+          id: 3,
+          params: {
+            threadId,
+            input: [{ type: "text", text: prompt }],
+          },
+        });
+        continue;
+      }
+
+      if (message.id === 3) {
+        turnId = readNestedString(message.result, "turn", "id");
+        continue;
+      }
+
+      if (message.method === "item/agentMessage/delta") {
+        const params = asRecord(message.params);
+        const delta = readString(params, "delta");
+        const itemId = readString(params, "itemId");
+
+        if (delta) {
+          if (itemId) {
+            streamedItemIds.add(itemId);
+          }
+          yield delta;
+        }
+        continue;
+      }
+
+      if (message.method === "item/completed") {
+        const params = asRecord(message.params);
+        const item = asRecord(params?.item);
+        const itemId = readString(item, "id");
+
+        if (
+          readString(item, "type") === "agentMessage" &&
+          (!itemId || !streamedItemIds.has(itemId))
+        ) {
+          const text = readString(item, "text");
+          if (text) {
+            yield text;
+          }
+        }
+        continue;
+      }
+
+      if (message.method === "error") {
+        const params = asRecord(message.params);
+        if (params?.willRetry !== true) {
+          throw new Error(
+            readNestedString(params, "error", "message") ??
+              "Codex turn failed",
+          );
+        }
+        continue;
+      }
+
+      if (message.method === "turn/completed") {
+        const params = asRecord(message.params);
+        const completedThreadId = readString(params, "threadId");
+        const turn = asRecord(params?.turn);
+        const completedTurnId = readString(turn, "id");
+
+        if (
+          (threadId && completedThreadId !== threadId) ||
+          (turnId && completedTurnId !== turnId)
+        ) {
+          continue;
+        }
+
+        const status = readString(turn, "status");
+        if (status !== "completed") {
+          throw new Error(
+            readNestedString(turn, "error", "message") ??
+              `Codex turn ended with status "${status ?? "unknown"}"`,
+          );
+        }
+        return;
+      }
+    }
+
+    if (childError) {
+      throw childError;
+    }
+
+    const exit = await exited;
+    const detail = exit.signal
+      ? `signal ${exit.signal}`
+      : `code ${exit.code ?? 1}`;
+    throw new Error(
+      `Codex app-server exited with ${detail}${
+        stderr.trim() ? `: ${stderr.trim()}` : ""
+      }`,
+    );
+  } finally {
+    signal?.removeEventListener("abort", abort);
+    lines.close();
+    child.stdin.end();
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill();
     }
   }
 }
 
-function throwForFailedEvent(event: ThreadEvent): void {
-  if (event.type === "turn.failed") {
-    throw new Error(event.error.message);
+function resolveAppServerInvocation(
+  codexPathOverride?: string,
+): { command: string; arguments: string[] } {
+  if (codexPathOverride) {
+    return {
+      command: codexPathOverride,
+      arguments: ["app-server", "--listen", "stdio://"],
+    };
   }
 
-  if (event.type === "error") {
-    throw new Error(event.message);
+  const sdkEntry = fileURLToPath(
+    import.meta.resolve("@openai/codex-sdk"),
+  );
+  const sdkRequire = createRequire(sdkEntry);
+  const codexCli = sdkRequire.resolve("@openai/codex/bin/codex.js");
+
+  return {
+    command: process.execPath,
+    arguments: [
+      codexCli,
+      "app-server",
+      "--listen",
+      "stdio://",
+    ],
+  };
+}
+
+function parseRpcMessage(line: string): RpcMessage {
+  try {
+    const value = JSON.parse(line) as unknown;
+    if (!asRecord(value)) {
+      throw new Error("message is not an object");
+    }
+    return value as RpcMessage;
+  } catch (error) {
+    throw new Error("Codex app-server returned invalid JSON", {
+      cause: error,
+    });
   }
+}
+
+function asRecord(
+  value: unknown,
+): Record<string, unknown> | undefined {
+  return typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function readString(
+  value: Record<string, unknown> | undefined,
+  key: string,
+): string | undefined {
+  const candidate = value?.[key];
+  return typeof candidate === "string" ? candidate : undefined;
+}
+
+function readNestedString(
+  value: unknown,
+  parent: string,
+  child: string,
+): string | undefined {
+  return readString(asRecord(asRecord(value)?.[parent]), child);
 }

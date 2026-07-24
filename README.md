@@ -22,7 +22,8 @@ Each adapter package implements one domain interface:
 `OSBootOptions.input` and `OSBootOptions.output` are vectors. The OS starts
 every input concurrently, so long-running sources such as cron jobs, HTTP
 listeners, and the CLI can feed the same agent loop. For every message, the
-orchestrator selects one output from the configured output vector.
+orchestrator selects a primary output and may add response copies or
+channel-specific messages on other configured outputs.
 
 Domain types are exported from `@agent-os/core/domain` (see `src/domain/`).
 
@@ -87,6 +88,7 @@ scripts/mockups/
 | `@agent-os/env-node` | env |
 | `@agent-os/discovery-memory` | discovery |
 | `@agent-os/orchestrator-default` | orchestrator |
+| `@agent-os/output-telegram` | output |
 | `@agent-os/agent-loop` | agent |
 | `@agent-os/app` | composition root |
 
@@ -114,7 +116,9 @@ the current message and chat metadata, available capability manifests, and
 configured output channels. Its structured decision chooses:
 
 - the capability IDs the agent loop may use;
-- the single output channel that receives progress and the final response.
+- the primary output channel that receives progress and the final response;
+- optional additional outputs that receive either a response copy or fixed
+  channel-specific text.
 
 The decision is validated against the available capabilities and outputs.
 If model routing fails, the orchestrator falls back to text-based capability
@@ -123,6 +127,16 @@ The orchestrator always considers the complete registered capability catalog
 and can select up to 50 capabilities by default. The agent loop can load the
 same default maximum; both limits remain configurable through their
 `maxCapabilities` constructor option.
+
+For example, with the web API and Telegram configured, a web request to write
+a report can route the generated report to Telegram while returning a short
+`Okay, done.` acknowledgement to the web request. Set both variables to enable
+the Telegram output:
+
+```dotenv
+TELEGRAM_BOT_TOKEN=123456:bot-token
+TELEGRAM_CHAT_ID=123456789
+```
 
 ## Cron jobs
 
