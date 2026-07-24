@@ -1,5 +1,5 @@
 {
-  "name": "@agent-os/orchestrator-default",
+  "name": "@agent-os/output-telegram",
   "version": "0.1.0",
   "private": true,
   "type": "module",

@@ -294,6 +294,9 @@ importers:
       '@agent-os/orchestrator-default':
         specifier: workspace:*
         version: link:../orchestrator/default
+      '@agent-os/output-telegram':
+        specifier: workspace:*
+        version: link:../output/telegram
 
   packages/discovery/memory:
     dependencies:
@@ -329,6 +332,12 @@ importers:
         version: link:../../..
 
   packages/orchestrator/default:
+    dependencies:
+      '@agent-os/core':
+        specifier: workspace:*
+        version: link:../../..
+
+  packages/output/telegram:
     dependencies:
       '@agent-os/core':
         specifier: workspace:*

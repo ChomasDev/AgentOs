@@ -18,7 +18,11 @@ import {
 import { CLIInput, CLIOutput } from "@agent-os/io-cli";
 import { CodexProvider } from "@agent-os/ai-codex";
 import { DefaultOrchestrator } from "@agent-os/orchestrator-default";
-import type { InputInterface } from "@agent-os/core/domain";
+import { TelegramOutput } from "@agent-os/output-telegram";
+import type {
+  InputInterface,
+  OutputInterface,
+} from "@agent-os/core/domain";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import OS from "./Os/index.js";
@@ -92,9 +96,20 @@ if (shouldEnableCliInput()) {
   inputs.unshift(new CLIInput({ onInterrupt: shutdown }));
 }
 const cliOutput = new CLIOutput();
-const outputs = persistentMode
+const outputs: OutputInterface[] = persistentMode
   ? [cliOutput, openRouterApi]
   : [cliOutput];
+const telegramBotToken = env.get("TELEGRAM_BOT_TOKEN");
+const telegramChatId = env.get("TELEGRAM_CHAT_ID");
+
+if (persistentMode && telegramBotToken && telegramChatId) {
+  outputs.push(
+    new TelegramOutput({
+      botToken: telegramBotToken,
+      chatId: telegramChatId,
+    }),
+  );
+}
 const capabilityDiscovery = new InMemoryCapabilityDiscovery();
 
 await capabilityDiscovery.register(

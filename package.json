@@ -29,6 +29,7 @@
     "build:core": "tsc -p tsconfig.json",
     "build:packages": "pnpm --filter './packages/**' -r --if-present run build",
     "build": "pnpm run build:core && pnpm run build:packages",
+    "test": "pnpm --filter './packages/**' -r --if-present run test",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

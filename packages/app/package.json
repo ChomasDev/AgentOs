@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
+    "test": "tsx --test test/**/*.test.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
@@ -19,6 +20,7 @@
     "@agent-os/input-cronjob": "workspace:*",
     "@agent-os/input-openrouter-api": "workspace:*",
     "@agent-os/io-cli": "workspace:*",
-    "@agent-os/orchestrator-default": "workspace:*"
+    "@agent-os/orchestrator-default": "workspace:*",
+    "@agent-os/output-telegram": "workspace:*"
   }
 }

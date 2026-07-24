@@ -63,9 +63,47 @@ export default class OS {
           : undefined,
       });
 
-      await output.write(
-        response.type === "text" ? response.text : response.stream,
+      const additionalOutputs = (decision.additionalOutputs ?? []).map(
+        (route) => {
+          const destination = bootOptions.output.find(
+            (candidate) => candidate.channel === route.outputChannel,
+          );
+
+          if (!destination) {
+            throw new Error(
+              `Orchestrator selected unavailable additional output "${route.outputChannel}"`,
+            );
+          }
+
+          return { route, destination };
+        },
       );
+      const responseOutputs = [
+        output,
+        ...additionalOutputs
+          .filter(({ route }) => route.content === "response")
+          .map(({ destination }) => destination),
+      ];
+      const generatedResponse =
+        response.type === "text"
+          ? response.text
+          : responseOutputs.length === 1
+            ? response.stream
+            : await collectStream(response.stream);
+
+      if (typeof generatedResponse === "string") {
+        for (const destination of responseOutputs) {
+          await destination.write(generatedResponse);
+        }
+      } else {
+        await output.write(generatedResponse);
+      }
+
+      for (const { route, destination } of additionalOutputs) {
+        if (route.content === "text" && route.text !== undefined) {
+          await destination.write(route.text);
+        }
+      }
     };
 
     try {
@@ -103,4 +141,14 @@ export default class OS {
       this.listening = false;
     }
   }
+}
+
+async function collectStream(stream: AsyncIterable<string>): Promise<string> {
+  const chunks: string[] = [];
+
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+  }
+
+  return chunks.join("");
 }
