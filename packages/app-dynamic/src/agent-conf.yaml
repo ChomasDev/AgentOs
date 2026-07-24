@@ -14,10 +14,25 @@ interfaces:
   input:
     - io-cli
     - cronjob
-    - openrouter-api
+    - id: openrouter-api
+      config:
+        hostname: 127.0.0.1
+        port: 3000
+        model: agent-os
+        corsOrigins: "*"
+        log: true
+        # apiKey: set via OPENROUTER_API_KEY or here
   output:
     - io-cli
-    - openrouter-api
+    # Must be the same package id as input so boot reuses one instance
+    # (OpenRouterApiInput.write needs the active HTTP request context).
+    - id: openrouter-api
+      config:
+        hostname: 127.0.0.1
+        port: 3000
+        model: agent-os
+        corsOrigins: "*"
+        log: true
     - telegram
   action:
     - action-cli

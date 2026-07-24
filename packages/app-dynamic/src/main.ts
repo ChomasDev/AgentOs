@@ -12,8 +12,12 @@ const init = await getInitConf(agentConfPath);
 
 console.log("[dynamic] Loaded packages:", {
   schemaVersion: init.conf.schemaVersion,
-  input: init.modules.input.map((entry) => entry.id),
-  output: init.modules.output.map((entry) => entry.id),
+  input: init.modules.input.map((entry) =>
+    entry.config ? { id: entry.id, config: entry.config } : entry.id,
+  ),
+  output: init.modules.output.map((entry) =>
+    entry.config ? { id: entry.id, config: entry.config } : entry.id,
+  ),
   action: init.modules.action.map((entry) => entry.id),
   agent: init.modules.agent.map((entry) => entry.id),
   orchestrator: init.modules.orchestrator.map((entry) => entry.id),

@@ -4,6 +4,7 @@ import {
   loadAgentConfYaml,
   type AgentConf,
   type AgentInterfaceKind,
+  type PackageConf,
 } from "./yarml-parser.js";
 
 export type CapabilityModule = Record<string, unknown>;
@@ -12,6 +13,7 @@ export interface LoadedPackage {
   id: string;
   kind: CapabilityType;
   module: CapabilityModule;
+  config?: Record<string, unknown>;
 }
 
 export interface InitConfModules {
@@ -48,10 +50,11 @@ export async function getInitConf(agentConfPath: string): Promise<InitConf> {
   await Promise.all(
     KINDS.map(async (kind) => {
       modules[kind] = await Promise.all(
-        conf.interfaces[kind].map(async (id) => ({
-          id,
+        conf.interfaces[kind].map(async (entry: PackageConf) => ({
+          id: entry.id,
           kind,
-          module: await getOrDownloadCapability(id, kind),
+          config: entry.config,
+          module: await getOrDownloadCapability(entry.id, kind),
         })),
       );
     }),

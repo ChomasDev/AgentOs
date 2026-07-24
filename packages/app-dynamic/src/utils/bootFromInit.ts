@@ -138,6 +138,9 @@ export async function bootFromInit(init: InitConf): Promise<void> {
   );
 
   const shutdownRef: { current?: () => void } = {};
+  // Share instances across kinds so dual input/output adapters (openrouter)
+  // keep HTTP request context for write().
+  const sharedInstances = new Map<string, unknown>();
   const inputs = createKindInstances<InputInterface>(
     init.modules.input,
     "input",
@@ -152,6 +155,7 @@ export async function bootFromInit(init: InitConf): Promise<void> {
       workingDirectory: repositoryRoot,
     },
     env,
+    sharedInstances,
   );
   const outputs = createKindInstances<OutputInterface>(
     init.modules.output,
@@ -159,6 +163,7 @@ export async function bootFromInit(init: InitConf): Promise<void> {
     registry,
     { env },
     env,
+    sharedInstances,
   );
 
   const closers: Array<() => Promise<void>> = [];
@@ -251,16 +256,33 @@ function createKindInstances<T>(
   registry: RegistryIndex,
   extras: Record<string, unknown>,
   env: Environment,
+  sharedInstances?: Map<string, unknown>,
 ): T[] {
   const instances: T[] = [];
 
   for (const loaded of packages) {
     for (const iface of interfacesFor(loaded.id, kind, registry)) {
+      const cacheKey = `${loaded.id}::${iface.className}`;
+      const cached = sharedInstances?.get(cacheKey);
+      if (cached) {
+        instances.push(cached as T);
+        continue;
+      }
+
       try {
-        const options = buildOptions(iface.config, env, extras);
-        instances.push(
-          instantiate(loaded.module, iface.className, options) as T,
+        const options = buildOptions(
+          iface.config,
+          env,
+          extras,
+          loaded.config,
         );
+        const instance = instantiate(
+          loaded.module,
+          iface.className,
+          options,
+        ) as T;
+        sharedInstances?.set(cacheKey, instance);
+        instances.push(instance);
       } catch (error) {
         if (error instanceof SkipInstantiationError) {
           console.warn(
@@ -288,12 +310,16 @@ function buildOptions(
   config: readonly RegistryConfigEntry[] | undefined,
   env: Environment,
   extras: Record<string, unknown>,
+  yamlConfig?: Record<string, unknown>,
 ): Record<string, unknown> {
   const options: Record<string, unknown> = { ...extras };
 
   for (const entry of config ?? []) {
-    let value: unknown =
-      entry.env !== undefined ? env.get(entry.env) : undefined;
+    let value: unknown = yamlConfig?.[entry.key];
+
+    if (value === undefined || value === "") {
+      value = entry.env !== undefined ? env.get(entry.env) : undefined;
+    }
 
     if (value === undefined || value === "") {
       value = entry.default;
@@ -307,6 +333,13 @@ function buildOptions(
 
     if (value !== undefined && value !== "") {
       options[entry.key] = coerceConfigValue(value, entry.type);
+    }
+  }
+
+  // Allow arbitrary yaml keys beyond registry config schema.
+  for (const [key, value] of Object.entries(yamlConfig ?? {})) {
+    if (value !== undefined) {
+      options[key] = value;
     }
   }
 

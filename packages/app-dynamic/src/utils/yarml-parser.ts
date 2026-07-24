@@ -11,15 +11,21 @@ export type AgentInterfaceKind =
   | "output"
   | "action";
 
+export interface PackageConf {
+  id: string;
+  /** Constructor options merged on top of registry/env defaults. */
+  config?: Record<string, unknown>;
+}
+
 export interface AgentInterfaces {
-  env: string[];
-  ai: string[];
-  discovery: string[];
-  orchestrator: string[];
-  agent: string[];
-  input: string[];
-  output: string[];
-  action: string[];
+  env: PackageConf[];
+  ai: PackageConf[];
+  discovery: PackageConf[];
+  orchestrator: PackageConf[];
+  agent: PackageConf[];
+  input: PackageConf[];
+  output: PackageConf[];
+  action: PackageConf[];
 }
 
 export interface AgentConf {
@@ -69,13 +75,15 @@ function assertAgentConf(value: unknown): AgentConf {
   for (const kind of INTERFACE_KINDS) {
     const packages = value.interfaces[kind];
 
-    if (!Array.isArray(packages) || !packages.every(isNonEmptyString)) {
+    if (!Array.isArray(packages)) {
       throw new Error(
-        `Agent conf "interfaces.${kind}" must be an array of non-empty strings`,
+        `Agent conf "interfaces.${kind}" must be an array of package ids or { id, config }`,
       );
     }
 
-    interfaces[kind] = packages;
+    interfaces[kind] = packages.map((entry, index) =>
+      assertPackageConf(entry, kind, index),
+    );
   }
 
   return {
@@ -84,10 +92,36 @@ function assertAgentConf(value: unknown): AgentConf {
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function assertPackageConf(
+  value: unknown,
+  kind: AgentInterfaceKind,
+  index: number,
+): PackageConf {
+  if (typeof value === "string" && value.trim() !== "") {
+    return { id: value.trim() };
+  }
+
+  if (!isRecord(value) || typeof value.id !== "string" || value.id.trim() === "") {
+    throw new Error(
+      `Agent conf "interfaces.${kind}[${index}]" must be a non-empty string or { id, config? }`,
+    );
+  }
+
+  if (
+    value.config !== undefined &&
+    (!isRecord(value.config) || Array.isArray(value.config))
+  ) {
+    throw new Error(
+      `Agent conf "interfaces.${kind}[${index}].config" must be an object`,
+    );
+  }
+
+  return {
+    id: value.id.trim(),
+    config: value.config,
+  };
 }
 
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim() !== "";
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

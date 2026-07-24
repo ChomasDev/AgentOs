@@ -259,45 +259,6 @@ importers:
         specifier: ^7.0.34
         version: 7.0.34(zod@4.4.3)
 
-  packages/app:
-    dependencies:
-      '@agent-os/action-cli':
-        specifier: workspace:*
-        version: link:../action/cli
-      '@agent-os/action-perplexityserach':
-        specifier: workspace:*
-        version: link:../action/perplexityserach
-      '@agent-os/agent-loop':
-        specifier: workspace:*
-        version: link:../agent/loop
-      '@agent-os/ai-codex':
-        specifier: workspace:*
-        version: link:../ai/codex
-      '@agent-os/core':
-        specifier: workspace:*
-        version: link:../..
-      '@agent-os/discovery-memory':
-        specifier: workspace:*
-        version: link:../discovery/memory
-      '@agent-os/env-node':
-        specifier: workspace:*
-        version: link:../env/node
-      '@agent-os/input-cronjob':
-        specifier: workspace:*
-        version: link:../input/cronjob
-      '@agent-os/input-openrouter-api':
-        specifier: workspace:*
-        version: link:../input/openrouter-api
-      '@agent-os/io-cli':
-        specifier: workspace:*
-        version: link:../input/io-cli
-      '@agent-os/orchestrator-default':
-        specifier: workspace:*
-        version: link:../orchestrator/default
-      '@agent-os/output-telegram':
-        specifier: workspace:*
-        version: link:../output/telegram
-
   packages/app-dynamic:
     dependencies:
       '@agent-os/core':
