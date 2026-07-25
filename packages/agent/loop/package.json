@@ -12,7 +12,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "agent-os.package.yaml"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

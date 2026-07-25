@@ -92,7 +92,12 @@ export async function bootFromInit(init: InitConf): Promise<void> {
 
   // Actions that live on input packages (e.g. cronjob manage) when not listed under action.
   for (const loaded of init.modules.input) {
-    for (const iface of interfacesFor(loaded.id, "action", registry)) {
+    for (const iface of interfacesFor(
+      loaded.id,
+      "action",
+      registry,
+      loaded.installedInterfaces,
+    )) {
       const alreadyListed = init.modules.action.some(
         (entry) => entry.id === loaded.id,
       );
@@ -233,8 +238,20 @@ function createEnvironment(
   const ProcessEnvironment = getConstructor(module, "ProcessEnvironment");
   const DotenvEnvironment = getConstructor(module, "DotenvEnvironment");
   const CompositeEnvironment = getConstructor(module, "CompositeEnvironment");
+  const defaultEnvironmentInterfaces = [
+    "env-node.process",
+    "env-node.dotenv",
+    "env-node.composite",
+  ];
 
-  if (ProcessEnvironment && DotenvEnvironment && CompositeEnvironment) {
+  if (
+    ProcessEnvironment &&
+    DotenvEnvironment &&
+    CompositeEnvironment &&
+    defaultEnvironmentInterfaces.every((id) =>
+      loaded.installedInterfaces.includes(id),
+    )
+  ) {
     return new CompositeEnvironment([
       new ProcessEnvironment(),
       new DotenvEnvironment({
@@ -243,7 +260,12 @@ function createEnvironment(
     ]) as Environment;
   }
 
-  const first = interfacesFor(loaded.id, "env", registry)[0];
+  const first = interfacesFor(
+    loaded.id,
+    "env",
+    registry,
+    loaded.installedInterfaces,
+  )[0];
   if (!first) {
     throw new Error(`No env interfaces found for package "${loaded.id}"`);
   }
@@ -261,7 +283,12 @@ function createKindInstances<T>(
   const instances: T[] = [];
 
   for (const loaded of packages) {
-    for (const iface of interfacesFor(loaded.id, kind, registry)) {
+    for (const iface of interfacesFor(
+      loaded.id,
+      kind,
+      registry,
+      loaded.installedInterfaces,
+    )) {
       const cacheKey = `${loaded.id}::${iface.className}`;
       const cached = sharedInstances?.get(cacheKey);
       if (cached) {
@@ -397,6 +424,7 @@ function interfacesFor(
   packageId: string,
   kind: CapabilityType,
   registry: RegistryIndex,
+  installedInterfaces?: readonly string[],
 ): RegistryInterface[] {
   const pkg = registry.packages.find((entry) => entry.id === packageId);
   if (!pkg) {
@@ -404,7 +432,11 @@ function interfacesFor(
       `Package "${packageId}" not found in registry index (.agent-os/registry/index.json)`,
     );
   }
-  return pkg.interfaces.filter((iface) => iface.kind === kind);
+  return pkg.interfaces.filter(
+    (iface) =>
+      iface.kind === kind &&
+      (!installedInterfaces || installedInterfaces.includes(iface.id)),
+  );
 }
 
 async function loadRegistryIndex(): Promise<RegistryIndex> {

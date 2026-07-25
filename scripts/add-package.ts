@@ -123,6 +123,7 @@ Templates live in scripts/mockups/:
 
 Creates:
   packages/<kind>/<name>/
+    agent-os.package.yaml
     package.json
     tsconfig.json
     src/index.ts
@@ -292,6 +293,7 @@ async function createPackage(kind: Kind, name: string) {
   const pascal = toPascal(kebabName);
   const className = `${pascal}${config.classSuffix}`;
   const packageName = `@agent-os/${config.packagePrefix}-${kebabName}`;
+  const packageId = `${config.packagePrefix}-${kebabName}`;
   const packageDir = join(repoRoot, "packages", config.folder, kebabName);
 
   if (existsSync(packageDir)) {
@@ -304,9 +306,15 @@ async function createPackage(kind: Kind, name: string) {
     __CLASS_NAME__: className,
     __SNAKE_NAME__: toSnake(kebabName),
     __PACKAGE_NAME__: packageName,
+    __PACKAGE_ID__: packageId,
+    __KIND__: kind,
   };
 
   const files: Record<string, string> = {
+    "agent-os.package.yaml": await renderMockup(
+      "agent-os.package.yaml.mockup",
+      values,
+    ),
     "package.json": await renderMockup("package.json.mockup", values),
     "tsconfig.json": await renderMockup("tsconfig.json.mockup", values),
     "src/index.ts": await renderMockup(`${kind}.mockup.ts`, values),

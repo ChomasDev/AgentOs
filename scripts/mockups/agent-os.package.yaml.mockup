@@ -1,0 +1,17 @@
+schemaVersion: 1
+id: __PACKAGE_ID__
+name: __PASCAL__
+version: 0.1.0
+description: TODO describe this package
+interfaces:
+  - id: __PACKAGE_ID__.__KIND__
+    kind: __KIND__
+    name: __CLASS_NAME__
+    entry: .
+    export: .
+    className: __CLASS_NAME__
+    description: TODO describe this interface
+    permissions: []
+    # Add dependencies when this component cannot work alone, for example:
+    # required: [input]
+    required: []

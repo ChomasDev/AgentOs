@@ -1,0 +1,17 @@
+schemaVersion: 1
+id: discovery-memory
+name: In-Memory Discovery
+version: 0.1.0
+description: In-memory capability registry
+interfaces:
+  - id: discovery-memory.discovery
+    kind: discovery
+    entry: .
+    export: .
+    className: InMemoryCapabilityDiscovery
+    description: Registers and discovers capabilities in memory
+    surfaces:
+      - local
+    startup:
+      when: always
+    name: InMemoryCapabilityDiscovery

@@ -1,0 +1,31 @@
+schemaVersion: 1
+id: telegram
+name: Telegram
+version: 0.1.0
+description: Deliver agent responses to a Telegram chat
+interfaces:
+  - id: telegram.output
+    kind: output
+    entry: .
+    export: .
+    className: TelegramOutput
+    description: Telegram messaging destination for delivering completed reports and messages
+    channel: telegram
+    surfaces:
+      - network
+    permissions:
+      - network.outbound
+    config:
+      - key: botToken
+        env: TELEGRAM_BOT_TOKEN
+        type: secret
+        required: true
+        description: Telegram Bot API token
+      - key: chatId
+        env: TELEGRAM_CHAT_ID
+        type: string
+        required: true
+        description: Destination chat id
+    startup:
+      when: ifConfigured
+    name: TelegramOutput

@@ -1,0 +1,17 @@
+schemaVersion: 1
+id: orchestrator-default
+name: Default Orchestrator
+version: 0.1.0
+description: Model-backed orchestrator that selects capabilities and output channels
+interfaces:
+  - id: orchestrator-default.orchestrator
+    kind: orchestrator
+    entry: .
+    export: .
+    className: DefaultOrchestrator
+    description: Chooses capability ids, primary output, and additional outputs per message
+    surfaces:
+      - local
+    startup:
+      when: always
+    name: DefaultOrchestrator

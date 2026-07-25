@@ -1,0 +1,27 @@
+schemaVersion: 1
+id: openai
+name: OpenAI
+version: 0.1.0
+description: OpenAI AI provider
+interfaces:
+  - id: openai.ai
+    kind: ai
+    entry: .
+    export: .
+    className: OpenAIProvider
+    description: Runs models through the OpenAI API
+    surfaces:
+      - network
+      - web
+    permissions:
+      - network.outbound
+      - ai.openai
+    config:
+      - key: apiKey
+        env: OPENAI_API_KEY
+        type: secret
+        required: true
+        description: OpenAI API key
+    startup:
+      when: ifConfigured
+    name: OpenAIProvider

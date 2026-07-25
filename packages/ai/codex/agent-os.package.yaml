@@ -1,0 +1,32 @@
+schemaVersion: 1
+id: ai-codex
+name: Codex
+version: 0.1.0
+description: Codex app-server AI provider
+interfaces:
+  - id: ai-codex.ai
+    kind: ai
+    entry: .
+    export: .
+    className: CodexProvider
+    description: Runs models through the Codex app server
+    surfaces:
+      - local
+      - network
+    permissions:
+      - ai.codex
+    config:
+      - key: model
+        env: CODEX_MODEL
+        type: string
+        required: false
+        default: gpt-5.6-sol
+        description: Default Codex model id
+      - key: apiKey
+        env: CODEX_API_KEY
+        type: secret
+        required: false
+        description: Optional Codex API key injected into the provider environment
+    startup:
+      when: ifConfigured
+    name: CodexProvider

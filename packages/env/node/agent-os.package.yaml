@@ -1,0 +1,53 @@
+schemaVersion: 1
+id: env-node
+name: Node Environment
+version: 0.1.0
+description: Process, dotenv, map, and composite environment adapters for Node.js
+interfaces:
+  - id: env-node.process
+    kind: env
+    entry: .
+    export: .
+    className: ProcessEnvironment
+    description: Reads from process.env
+    surfaces:
+      - local
+    startup:
+      when: always
+    name: ProcessEnvironment
+  - id: env-node.dotenv
+    kind: env
+    entry: .
+    export: .
+    className: DotenvEnvironment
+    description: Reads from a .env file
+    surfaces:
+      - local
+      - filesystem
+    permissions:
+      - filesystem.read
+    startup:
+      when: ifConfigured
+    name: DotenvEnvironment
+  - id: env-node.map
+    kind: env
+    entry: .
+    export: .
+    className: MapEnvironment
+    description: In-memory key/value environment
+    surfaces:
+      - local
+    startup:
+      when: manual
+    name: MapEnvironment
+  - id: env-node.composite
+    kind: env
+    entry: .
+    export: .
+    className: CompositeEnvironment
+    description: Chains multiple Environment adapters
+    surfaces:
+      - local
+    startup:
+      when: manual
+    name: CompositeEnvironment

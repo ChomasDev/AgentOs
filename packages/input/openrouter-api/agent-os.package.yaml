@@ -1,0 +1,70 @@
+schemaVersion: 1
+id: openrouter-api
+name: OpenRouter API
+version: 0.1.0
+description: OpenAI/OpenRouter-compatible HTTP input and output adapter
+interfaces:
+  - id: openrouter-api.input
+    kind: input
+    entry: .
+    export: .
+    className: OpenRouterApiInput
+    description: Accepts chat-completion HTTP requests into the agent loop
+    channel: openrouter-api
+    surfaces:
+      - http
+      - network
+      - web
+    permissions:
+      - network.inbound
+    config:
+      - key: hostname
+        env: OPENROUTER_API_HOST
+        type: string
+        required: false
+        default: 127.0.0.1
+        description: HTTP listen host
+      - key: port
+        env: OPENROUTER_API_PORT
+        type: number
+        required: false
+        default: 3000
+        description: HTTP listen port
+      - key: apiKey
+        env: OPENROUTER_API_KEY
+        type: secret
+        required: false
+        description: Optional API key required by clients
+      - key: model
+        env: OPENROUTER_API_MODEL
+        type: string
+        required: false
+        default: agent-os
+        description: Advertised model id
+      - key: corsOrigins
+        env: OPENROUTER_API_CORS_ORIGINS
+        type: string
+        required: false
+        default: "*"
+        description: Comma-separated CORS origins
+    startup:
+      when: ifConfigured
+    name: OpenRouterApiInput
+  - id: openrouter-api.output
+    kind: output
+    entry: .
+    export: .
+    className: OpenRouterApiInput
+    description: Writes correlated HTTP responses for openrouter-api requests (same class as input)
+    channel: openrouter-api
+    surfaces:
+      - http
+      - network
+      - web
+    permissions:
+      - network.inbound
+    startup:
+      when: ifConfigured
+    name: OpenRouterApiInput
+    required:
+      - input

@@ -1,0 +1,36 @@
+schemaVersion: 1
+id: io-cli
+name: CLI I/O
+version: 0.1.0
+description: Terminal input and output for interactive and one-shot CLI use
+interfaces:
+  - id: io-cli.input
+    kind: input
+    entry: .
+    export: .
+    className: CLIInput
+    description: Reads prompts from stdin / argv
+    channel: cli
+    surfaces:
+      - cli
+      - local
+    permissions:
+      - cli.stdin
+    startup:
+      when: ifConfigured
+    name: CLIInput
+  - id: io-cli.output
+    kind: output
+    entry: .
+    export: .
+    className: CLIOutput
+    description: Writes agent responses to stdout
+    channel: cli
+    surfaces:
+      - cli
+      - local
+    permissions:
+      - cli.stdout
+    startup:
+      when: always
+    name: CLIOutput

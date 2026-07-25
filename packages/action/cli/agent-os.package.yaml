@@ -1,0 +1,47 @@
+schemaVersion: 1
+id: action-cli
+name: CLI Command
+version: 0.1.0
+description: Run a small allowlisted set of local CLI commands
+interfaces:
+  - id: action-cli.action
+    kind: action
+    entry: .
+    export: .
+    className: RunCLICommandCapability
+    description: Inspects the local runtime by running an allowed CLI command without a shell
+    surfaces:
+      - cli
+      - local
+    permissions:
+      - cli.execute
+    capability:
+      id: cli.run-command
+      version: 1.0.0
+      name: run_cli_command
+      description: Inspects the local runtime by running an allowed CLI command without invoking a shell.
+      inputSchema:
+        type: object
+        properties:
+          command:
+            type: string
+          args:
+            type: array
+            items:
+              type: string
+        required:
+          - command
+          - args
+        additionalProperties: false
+      permissions:
+        - cli.execute
+      tags:
+        - cli
+        - command
+        - local
+      execution:
+        timeoutMs: 5000
+        idempotent: false
+    startup:
+      when: always
+    name: RunCLICommandCapability

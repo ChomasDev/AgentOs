@@ -52,6 +52,7 @@ pnpm addCapability -k orchestrator -n rules -y
 
 ```text
 packages/<kind>/<name>/
+  agent-os.package.yaml
   package.json
   tsconfig.json
   src/index.ts      # stub implementing the domain interface
@@ -61,6 +62,7 @@ Templates (edit these to change future scaffolds):
 
 ```text
 scripts/mockups/
+  agent-os.package.yaml.mockup
   <kind>.mockup.ts
   package.json.mockup
   tsconfig.json.mockup
@@ -74,6 +76,40 @@ scripts/mockups/
    - add a dependency in `packages/app/package.json`
    - import and register/boot it in `packages/app/src/main.ts`
 4. Run `pnpm install` if you added the app dependency by hand
+
+## Package manifests and selective installation
+
+Every capability package contains `agent-os.package.yaml`. It describes the
+package identity and each installable interface, including its kind and
+permissions:
+
+```yaml
+schemaVersion: 1
+id: openrouter-api
+name: OpenRouter API
+version: 0.1.0
+interfaces:
+  - id: openrouter-api.input
+    kind: input
+    name: OpenRouterApiInput
+    permissions: [network.inbound]
+  - id: openrouter-api.output
+    kind: output
+    name: OpenRouterApiInput
+    permissions: [network.inbound]
+    required: [input]
+```
+
+When `app-dynamic` downloads a package, it shows this information in an
+interactive checkbox selector. Use **↑ / ↓** (or `j` / `k`) to move,
+**Space** to toggle a component, and **Enter** to confirm. Dependencies are
+added automatically: in the example, selecting only the output also selects
+the required input.
+
+The selection is recorded beside the installed package in
+`agent-os.install.yaml`; only selected interfaces are instantiated. In
+non-interactive environments, `AGENT_OS_AUTO_INSTALL=1` accepts the components
+requested by `agent-conf.yaml` together with their requirements.
 
 ## Existing packages
 
