@@ -56,6 +56,7 @@ class SkipInstantiationError extends Error {
 
 export async function bootFromInit(init: InitConf): Promise<void> {
   const registry = await loadRegistryIndex();
+  overlayLoadedManifests(registry, init);
   const env = createEnvironment(init.modules.env, registry);
 
   const model = requireFirst(
@@ -87,6 +88,7 @@ export async function bootFromInit(init: InitConf): Promise<void> {
     { env, cwd: repositoryRoot },
     env,
   )) {
+    await initializeCapability(action);
     await capabilityDiscovery.register(action);
   }
 
@@ -110,6 +112,7 @@ export async function bootFromInit(init: InitConf): Promise<void> {
           iface.className,
           buildOptions(iface.config, env, { env, cwd: repositoryRoot }),
         ) as Capability;
+        await initializeCapability(action);
         await capabilityDiscovery.register(action);
       } catch (error) {
         if (error instanceof SkipInstantiationError) {
@@ -222,6 +225,12 @@ export async function bootFromInit(init: InitConf): Promise<void> {
     process.off("SIGINT", shutdown);
     process.off("SIGTERM", shutdown);
     await Promise.allSettled(closers.map((close) => close()));
+  }
+}
+
+async function initializeCapability(action: Capability): Promise<void> {
+  if (typeof action.initialize === "function") {
+    await action.initialize();
   }
 }
 
@@ -385,6 +394,18 @@ function coerceConfigValue(value: unknown, type: string | undefined): unknown {
     }
     return number;
   }
+  if (type === "boolean") {
+    if (typeof value === "boolean") {
+      return value;
+    }
+    if (value === "true" || value === "1") {
+      return true;
+    }
+    if (value === "false" || value === "0") {
+      return false;
+    }
+    throw new Error(`Invalid boolean config value: ${String(value)}`);
+  }
   return value;
 }
 
@@ -446,4 +467,46 @@ async function loadRegistryIndex(): Promise<RegistryIndex> {
     throw new Error(`Invalid registry index at ${indexPath}`);
   }
   return raw;
+}
+
+function overlayLoadedManifests(
+  registry: RegistryIndex,
+  init: InitConf,
+): void {
+  const loadedPackages = new Map<string, LoadedPackage>();
+  for (const modules of Object.values(init.modules)) {
+    for (const loaded of modules) {
+      loadedPackages.set(loaded.id, loaded);
+    }
+  }
+
+  for (const loaded of loadedPackages.values()) {
+    const interfaces = loaded.manifest.interfaces.map((iface) => {
+      if (typeof iface.className !== "string" || iface.className === "") {
+        throw new Error(
+          `Package "${loaded.id}" interface "${iface.id}" has no className`,
+        );
+      }
+      return {
+        id: iface.id,
+        kind: iface.kind,
+        className: iface.className,
+        config: Array.isArray(iface.config)
+          ? iface.config as unknown as RegistryConfigEntry[]
+          : undefined,
+      };
+    });
+    const replacement: RegistryPackage = {
+      id: loaded.id,
+      interfaces,
+    };
+    const index = registry.packages.findIndex(
+      (entry) => entry.id === loaded.id,
+    );
+    if (index >= 0) {
+      registry.packages[index] = replacement;
+    } else {
+      registry.packages.push(replacement);
+    }
+  }
 }

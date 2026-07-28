@@ -140,6 +140,7 @@ requested by `agent-conf.yaml` together with their requirements.
 | `@agent-os/io-cli` | input (+ CLI output in same package) |
 | `@agent-os/input-cronjob` | input (+ cron management capability) |
 | `@agent-os/action-cli` | action |
+| `@agent-os/action-pc-control` | action (macOS) |
 | `@agent-os/action-perplexityserach` | action |
 | `@agent-os/openai` | ai |
 | `@agent-os/ai-codex` | ai |
@@ -231,3 +232,20 @@ capability. You can test it in the main app with a prompt such as:
 ```text
 Search the web for the latest TypeScript release.
 ```
+
+## macOS PC control
+
+The `pc-control` action uses macOS-native automation to open/focus/quit apps,
+inspect an app's accessibility tree, move/click/scroll the mouse, type text,
+press keyboard shortcuts, list running apps, and capture screenshots.
+
+When the action is enabled, Agent OS requests Accessibility, Automation, and
+Screen Recording access during startup, before terminal input begins. Approve
+the prompts for the terminal/runtime shown by macOS. If a permission remains
+disabled, open **System Settings → Privacy & Security**, enable the terminal
+(and `osascript` if macOS lists it), then restart Agent OS.
+
+To suppress startup prompts, configure the action with
+`requestPermissionsOnInit: false` or set
+`PC_CONTROL_REQUEST_PERMISSIONS=false`. The `permissions` operation can request
+and report access later.

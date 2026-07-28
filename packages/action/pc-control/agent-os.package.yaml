@@ -1,0 +1,118 @@
+schemaVersion: 1
+id: pc-control
+name: macOS PC Control
+version: 0.1.0
+description: Control macOS applications, mouse, keyboard, accessibility UI, and screenshots
+interfaces:
+  - id: pc-control.action
+    kind: action
+    entry: .
+    export: .
+    className: MacOSControlCapability
+    name: MacOSControlCapability
+    description: Controls the local Mac through native macOS automation APIs
+    surfaces:
+      - local
+      - macos
+    permissions:
+      - macos.accessibility
+      - macos.automation
+      - macos.screen-recording
+      - filesystem.write
+    config:
+      - key: requestPermissionsOnInit
+        env: PC_CONTROL_REQUEST_PERMISSIONS
+        type: boolean
+        required: false
+        default: true
+        description: Request macOS privacy permissions when Agent OS starts
+      - key: maxAccessibilityDepth
+        env: PC_CONTROL_ACCESSIBILITY_DEPTH
+        type: number
+        required: false
+        default: 5
+        description: Maximum depth returned by get_accessibility_tree
+      - key: maxAccessibilityElements
+        env: PC_CONTROL_ACCESSIBILITY_ELEMENTS
+        type: number
+        required: false
+        default: 400
+        description: Maximum UI elements returned by get_accessibility_tree
+    capability:
+      id: macos.pc-control
+      version: 0.1.0
+      name: control_macos
+      description: Open, focus, and quit apps; inspect accessibility UI; move/click/scroll the mouse; type or press keys; and take screenshots.
+      inputSchema:
+        type: object
+        properties:
+          operation:
+            type: string
+            enum:
+              - permissions
+              - open_app
+              - focus_app
+              - quit_app
+              - list_apps
+              - get_accessibility_tree
+              - move_mouse
+              - click
+              - scroll
+              - type_text
+              - press_key
+              - screenshot
+          app:
+            type: string
+          text:
+            type: string
+          key:
+            type: string
+          modifiers:
+            type: array
+            items:
+              type: string
+              enum: [command, control, option, shift]
+          x:
+            type: number
+          y:
+            type: number
+          button:
+            type: string
+            enum: [left, right, center]
+          clicks:
+            type: integer
+            minimum: 1
+            maximum: 3
+          deltaX:
+            type: integer
+          deltaY:
+            type: integer
+          path:
+            type: string
+          depth:
+            type: integer
+            minimum: 0
+            maximum: 20
+          maxElements:
+            type: integer
+            minimum: 1
+            maximum: 5000
+        required:
+          - operation
+        additionalProperties: false
+      permissions:
+        - macos.accessibility
+        - macos.automation
+        - macos.screen-recording
+        - filesystem.write
+      tags:
+        - macos
+        - desktop
+        - accessibility
+        - mouse
+        - keyboard
+      execution:
+        timeoutMs: 30000
+        idempotent: false
+    startup:
+      when: always

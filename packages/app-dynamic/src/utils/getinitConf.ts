@@ -6,6 +6,7 @@ import {
   type AgentInterfaceKind,
   type PackageConf,
 } from "./yarml-parser.js";
+import type { PackageManifest } from "./package-manifest.js";
 
 export type CapabilityModule = Record<string, unknown>;
 
@@ -15,6 +16,7 @@ export interface LoadedPackage {
   module: CapabilityModule;
   config?: Record<string, unknown>;
   installedInterfaces: readonly string[];
+  manifest: PackageManifest;
 }
 
 export interface InitConfModules {
@@ -82,6 +84,7 @@ export async function getInitConf(agentConfPath: string): Promise<InitConf> {
         kind,
         config: entry.config,
         module: loaded.module,
+        manifest: loaded.manifest,
         installedInterfaces: loaded.installedInterfaces,
       }];
     });
@@ -108,6 +111,7 @@ export async function getInitConf(agentConfPath: string): Promise<InitConf> {
           kind,
           config: fallbackConfig,
           module: loaded.module,
+          manifest: loaded.manifest,
           installedInterfaces: loaded.installedInterfaces,
         });
       }

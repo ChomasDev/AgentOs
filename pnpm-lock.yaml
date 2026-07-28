@@ -223,6 +223,12 @@ importers:
         specifier: workspace:*
         version: link:../../..
 
+  packages/action/pc-control:
+    dependencies:
+      '@agent-os/core':
+        specifier: workspace:*
+        version: link:../../..
+
   packages/action/perplexityserach:
     dependencies:
       '@agent-os/core':

@@ -375,6 +375,13 @@ async function installFromPackageSource(
     await cp(manifestSource, join(targetRoot, PACKAGE_MANIFEST_FILE));
   }
 
+  const scriptsSource = join(sourceRoot, "scripts");
+  if (await exists(scriptsSource)) {
+    await cp(scriptsSource, join(targetRoot, "scripts"), {
+      recursive: true,
+    });
+  }
+
   const sourceNodeModules = join(sourceRoot, "node_modules");
   if (await exists(sourceNodeModules)) {
     await symlink(sourceNodeModules, join(targetRoot, "node_modules"), "dir");

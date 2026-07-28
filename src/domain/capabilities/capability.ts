@@ -13,6 +13,11 @@ export interface CapabilityExecutionContext {
 
 export interface Capability<TInput = unknown, TOutput = unknown> {
   readonly manifest: CapabilityManifest;
+  /**
+   * Optional startup hook for capabilities that need to prepare native
+   * resources or request host permissions before the agent starts listening.
+   */
+  initialize?(): Promise<void>;
   execute(
     input: TInput,
     context: CapabilityExecutionContext,
