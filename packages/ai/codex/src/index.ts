@@ -21,6 +21,7 @@ import type {
   AIProcessOptions,
   AIProcessResult,
   AIProvider,
+  JsonSchema,
 } from "@agent-os/core/domain";
 
 export interface CodexProviderOptions {
@@ -165,7 +166,7 @@ export class CodexProvider implements AIProvider {
       ].join("\n"),
     );
     const result = await this.startThread().run(prompt, {
-      outputSchema: definition.inputSchema,
+      outputSchema: normalizeCodexOutputSchema(definition.inputSchema),
       signal: resolveSignal(this.settings, options),
     });
 
@@ -322,7 +323,9 @@ function createFunctionStepSchema(
       arguments: {
         anyOf: [
           { type: "null" },
-          ...definitions.map((definition) => definition.inputSchema),
+          ...definitions.map((definition) =>
+            normalizeCodexOutputSchema(definition.inputSchema),
+          ),
         ],
       },
       text: {
@@ -332,6 +335,82 @@ function createFunctionStepSchema(
     required: ["type", "name", "arguments", "text"],
     additionalProperties: false,
   } as const;
+}
+
+/**
+ * Codex structured outputs use OpenAI's strict schema subset. Every object
+ * property must be listed in `required`; optional fields are represented as
+ * required nullable fields instead.
+ */
+export function normalizeCodexOutputSchema(schema: JsonSchema): JsonSchema {
+  return normalizeSchemaNode(schema) as JsonSchema;
+}
+
+function normalizeSchemaNode(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(normalizeSchemaNode);
+  }
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  const normalized = Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [
+      key,
+      normalizeSchemaNode(entry),
+    ]),
+  );
+  if (!isRecord(value.properties)) {
+    return normalized;
+  }
+
+  const originallyRequired = new Set(
+    Array.isArray(value.required)
+      ? value.required.filter(
+        (entry): entry is string => typeof entry === "string",
+      )
+      : [],
+  );
+  const properties = Object.fromEntries(
+    Object.entries(value.properties).map(([key, propertySchema]) => {
+      const property = normalizeSchemaNode(propertySchema);
+      return [
+        key,
+        originallyRequired.has(key) || allowsNull(property)
+          ? property
+          : { anyOf: [property, { type: "null" }] },
+      ];
+    }),
+  );
+
+  return {
+    ...normalized,
+    properties,
+    required: Object.keys(properties),
+    additionalProperties: false,
+  };
+}
+
+function allowsNull(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (value.type === "null") {
+    return true;
+  }
+  if (Array.isArray(value.type) && value.type.includes("null")) {
+    return true;
+  }
+  if (Array.isArray(value.enum) && value.enum.includes(null)) {
+    return true;
+  }
+  return ["anyOf", "oneOf"].some(
+    (key) => Array.isArray(value[key]) && value[key].some(allowsNull),
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function parseFunctionStep(value: string): FunctionStep {
