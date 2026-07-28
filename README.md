@@ -27,6 +27,28 @@ channel-specific messages on other configured outputs.
 
 Domain types are exported from `@agent-os/core/domain` (see `src/domain/`).
 
+## Interactive setup
+
+Run the React terminal wizard to configure Agent OS:
+
+```bash
+pnpm setup
+```
+
+The centered two-pane interface walks through the AI provider, model,
+environment, discovery, orchestrator, agent loop, inputs, outputs, and actions.
+The right pane previews the highlighted package and expands every interface it
+contains, including permissions and required companion interfaces.
+
+Use **↑ / ↓** (or `j` / `k`) to move, **Space** to select, **Enter** to
+continue, and **Esc** to go back. The review step writes
+`packages/app-dynamic/src/agent-conf.yaml`. Existing package configuration is
+preserved when possible. To write somewhere else:
+
+```bash
+pnpm setup -- --output ./agent-conf.yaml
+```
+
 ## Create a new adapter
 
 ```bash
@@ -197,6 +219,7 @@ Remove the weekday-ai-news cron job.
 
 ```bash
 pnpm addCapability   # scaffold a new adapter
+pnpm setup           # open the interactive configuration wizard
 pnpm build           # build core + packages
 pnpm dev             # run the app
 pnpm start           # start the app

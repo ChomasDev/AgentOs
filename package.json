@@ -27,6 +27,7 @@
     "dev:dynamic": "pnpm --filter @agent-os/app-dynamic dev",
     "start": "pnpm --filter @agent-os/app start",
     "start:dynamic": "pnpm --filter @agent-os/app-dynamic start",
+    "setup": "pnpm --filter @agent-os/setup start",
     "addCapability": "node --experimental-strip-types scripts/add-package.ts",
     "build:core": "tsc -p tsconfig.json",
     "build:packages": "pnpm --filter './packages/**' -r --if-present run build",

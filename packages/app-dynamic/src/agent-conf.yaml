@@ -1,10 +1,11 @@
 schemaVersion: 1
-
 interfaces:
   env:
     - env-node
   ai:
-    - ai-codex
+    - id: ai-codex
+      config:
+        model: gpt-5.6-sol
   discovery:
     - discovery-memory
   orchestrator:
@@ -12,7 +13,6 @@ interfaces:
   agent:
     - agent-loop
   input:
-    - io-cli
     - cronjob
     - id: openrouter-api
       config:
@@ -21,11 +21,10 @@ interfaces:
         model: agent-os
         corsOrigins: "*"
         log: true
-        # apiKey: set via OPENROUTER_API_KEY or here
+    - io-cli
   output:
     - io-cli
-    # Must be the same package id as input so boot reuses one instance
-    # (OpenRouterApiInput.write needs the active HTTP request context).
+    - telegram
     - id: openrouter-api
       config:
         hostname: 127.0.0.1
@@ -33,7 +32,6 @@ interfaces:
         model: agent-os
         corsOrigins: "*"
         log: true
-    - telegram
   action:
     - action-cli
     - perplexity-search
