@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
-import { mkdir } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type {
@@ -8,6 +9,13 @@ import type {
   CapabilityManifest,
   CapabilityResult,
 } from "@agent-os/core/domain";
+import {
+  ChromiumController,
+  type WebControl,
+  type WebSelectChoice,
+  type WebSnapshotOptions,
+  type WebTarget,
+} from "./chromium-controller.js";
 
 export type MacOSControlOperation =
   | "permissions"
@@ -16,12 +24,23 @@ export type MacOSControlOperation =
   | "quit_app"
   | "list_apps"
   | "get_accessibility_tree"
+  | "get_app_state"
+  | "click_element"
+  | "set_element_value"
+  | "perform_element_action"
   | "move_mouse"
   | "click"
   | "scroll"
   | "type_text"
   | "press_key"
-  | "screenshot";
+  | "screenshot"
+  | "web_open"
+  | "web_snapshot"
+  | "web_click"
+  | "web_fill"
+  | "web_select"
+  | "web_press"
+  | "web_wait";
 
 export interface MacOSControlInput {
   operation: MacOSControlOperation;
@@ -38,6 +57,22 @@ export interface MacOSControlInput {
   path?: string;
   depth?: number;
   maxElements?: number;
+  url?: string;
+  selector?: string;
+  targetText?: string;
+  label?: string;
+  name?: string;
+  value?: string;
+  waitMs?: number;
+  maxHtmlChars?: number;
+  maxTextChars?: number;
+  timeoutMs?: number;
+  elementIndex?: number;
+  action?: string;
+  includeScreenshot?: boolean;
+  optionText?: string;
+  optionValue?: string;
+  optionIndex?: number;
 }
 
 export interface NativeCommandResult {
@@ -70,14 +105,18 @@ export interface MacOSControlOptions {
   requestPermissionsOnInit?: boolean;
   runner?: NativeCommandRunner;
   timeoutMs?: number;
+  browserApp?: string;
+  browserProfileDirectory?: string;
+  webController?: WebControl;
+  webStartupTimeoutMs?: number;
 }
 
 const manifest: CapabilityManifest = {
   id: "macos.pc-control",
-  version: "0.1.0",
+  version: "0.4.0",
   name: "control_macos",
   description:
-    "Controls the local Mac: applications, accessibility UI, mouse, keyboard, scrolling, and screenshots. Call permissions first when an operation is denied.",
+    "Controls the local Mac and a DOM-aware Chromium browser. Prefer click_element/set_element_value for native apps and web_* for websites. Use web_select for <select>/<option> controls; web_click automatically routes option selectors to selection. Both modes avoid the physical mouse and return fresh state.",
   inputSchema: {
     type: "object",
     properties: {
@@ -90,12 +129,23 @@ const manifest: CapabilityManifest = {
           "quit_app",
           "list_apps",
           "get_accessibility_tree",
+          "get_app_state",
+          "click_element",
+          "set_element_value",
+          "perform_element_action",
           "move_mouse",
           "click",
           "scroll",
           "type_text",
           "press_key",
           "screenshot",
+          "web_open",
+          "web_snapshot",
+          "web_click",
+          "web_fill",
+          "web_select",
+          "web_press",
+          "web_wait",
         ],
       },
       app: { type: "string", description: "macOS application name." },
@@ -121,6 +171,73 @@ const manifest: CapabilityManifest = {
       path: { type: "string", description: "Output PNG path." },
       depth: { type: "integer", minimum: 0, maximum: 20 },
       maxElements: { type: "integer", minimum: 1, maximum: 5_000 },
+      url: {
+        type: "string",
+        description: "URL for web_open.",
+      },
+      selector: {
+        type: "string",
+        description: "CSS selector for a web element.",
+      },
+      targetText: {
+        type: "string",
+        description: "Visible text used to locate a web element.",
+      },
+      label: {
+        type: "string",
+        description: "Visible label associated with a web form field.",
+      },
+      name: {
+        type: "string",
+        description: "HTML name attribute used to locate a web form field.",
+      },
+      value: {
+        type: "string",
+        description: "Value for web_fill. Password values are redacted in results.",
+      },
+      waitMs: {
+        type: "integer",
+        minimum: 0,
+        maximum: 10_000,
+        description: "Extra time to allow the page to update before returning its state.",
+      },
+      maxHtmlChars: { type: "integer", minimum: 1_000, maximum: 200_000 },
+      maxTextChars: { type: "integer", minimum: 1_000, maximum: 100_000 },
+      timeoutMs: {
+        type: "integer",
+        minimum: 100,
+        maximum: 30_000,
+        description: "Timeout for web_wait.",
+      },
+      elementIndex: {
+        type: "integer",
+        minimum: 0,
+        description:
+          "Fresh elementIndex from get_app_state or the state returned by the previous element action.",
+      },
+      action: {
+        type: "string",
+        description:
+          "Accessibility action exposed by the element, such as AXPress or AXShowMenu.",
+      },
+      includeScreenshot: {
+        type: "boolean",
+        description:
+          "Include a screenshot in get_app_state and post-action observations. Defaults to true.",
+      },
+      optionText: {
+        type: "string",
+        description: "Visible option text for web_select.",
+      },
+      optionValue: {
+        type: "string",
+        description: "HTML option value for web_select.",
+      },
+      optionIndex: {
+        type: "integer",
+        minimum: 0,
+        description: "Zero-based option index for web_select.",
+      },
     },
     required: ["operation"],
     additionalProperties: false,
@@ -135,7 +252,17 @@ const manifest: CapabilityManifest = {
     "macos.screen-recording",
     "filesystem.write",
   ],
-  tags: ["macos", "desktop", "accessibility", "mouse", "keyboard"],
+  tags: [
+    "macos",
+    "desktop",
+    "accessibility",
+    "mouse",
+    "keyboard",
+    "browser",
+    "html",
+    "dom",
+    "virtual-input",
+  ],
   execution: {
     timeoutMs: 30_000,
     idempotent: false,
@@ -147,6 +274,10 @@ const scriptsDirectory = fileURLToPath(
 );
 const scripts = {
   accessibilityTree: resolve(scriptsDirectory, "accessibility-tree.js"),
+  accessibilityAction: resolve(
+    scriptsDirectory,
+    "accessibility-action.js",
+  ),
   apps: resolve(scriptsDirectory, "apps.js"),
   automationPermission: resolve(
     scriptsDirectory,
@@ -171,6 +302,7 @@ export class MacOSControlCapability
   private readonly requestPermissionsOnInit: boolean;
   private readonly runner: NativeCommandRunner;
   private readonly timeoutMs: number;
+  private readonly web: WebControl;
   private permissionStatus: MacOSPermissionStatus = {
     accessibility: null,
     automation: null,
@@ -195,6 +327,15 @@ export class MacOSControlCapability
     this.runner = options.runner ?? executeNativeCommand;
     this.timeoutMs =
       options.timeoutMs ?? manifest.execution?.timeoutMs ?? 30_000;
+    this.web =
+      options.webController ??
+      new ChromiumController({
+        browserApp: options.browserApp ?? "Google Chrome",
+        cwd: this.cwd,
+        launch: (command, args, signal) => this.run(command, args, signal),
+        profileDirectory: options.browserProfileDirectory,
+        startupTimeoutMs: options.webStartupTimeoutMs ?? 10_000,
+      });
   }
 
   async initialize(): Promise<void> {
@@ -232,7 +373,9 @@ export class MacOSControlCapability
             ? "VALIDATION_ERROR"
             : error instanceof UnsupportedPlatformError
               ? "UNSUPPORTED_PLATFORM"
-              : "MACOS_CONTROL_FAILED",
+              : input.operation.startsWith("web_")
+                ? "BROWSER_CONTROL_FAILED"
+                : "MACOS_CONTROL_FAILED",
           message: error instanceof Error ? error.message : "macOS control failed",
           retryable: false,
           details: commandErrorDetails(error),
@@ -302,6 +445,14 @@ export class MacOSControlCapability
           signal,
         );
       }
+      case "get_app_state": {
+        const app = requiredText(input.app, "app");
+        return this.getAppState(app, input, signal);
+      }
+      case "click_element":
+      case "set_element_value":
+      case "perform_element_action":
+        return this.runElementOperation(input, signal);
       case "move_mouse": {
         const { x, y } = coordinates(input);
         return this.runJson(
@@ -366,6 +517,48 @@ export class MacOSControlCapability
         return this.pressKey(input, signal);
       case "screenshot":
         return this.takeScreenshot(input.path, signal);
+      case "web_open":
+        return this.web.navigate(
+          requiredUrl(input.url),
+          webSnapshotOptions(input),
+          signal,
+        );
+      case "web_snapshot":
+        return this.web.snapshot(webSnapshotOptions(input), signal);
+      case "web_click":
+        return this.web.click(
+          webTarget(input),
+          webSnapshotOptions(input),
+          signal,
+        );
+      case "web_fill":
+        return this.web.fill(
+          webTarget(input),
+          requiredString(input.value, "value"),
+          webSnapshotOptions(input),
+          signal,
+        );
+      case "web_select":
+        return this.web.select(
+          webTarget(input),
+          webSelectChoice(input),
+          webSnapshotOptions(input),
+          signal,
+        );
+      case "web_press":
+        return this.web.press(
+          requiredText(input.key, "key"),
+          optionalWebTarget(input),
+          webSnapshotOptions(input),
+          signal,
+        );
+      case "web_wait":
+        return this.web.waitFor(
+          webTarget(input),
+          clampInteger(input.timeoutMs ?? 10_000, 100, 30_000),
+          webSnapshotOptions(input),
+          signal,
+        );
       default:
         throw new ValidationError(
           `Unknown operation: ${String(input.operation)}`,
@@ -385,6 +578,92 @@ export class MacOSControlCapability
       signal,
     );
     return { key, modifiers: [...modifiers], pressed: true };
+  }
+
+  private async runElementOperation(
+    input: MacOSControlInput,
+    signal?: AbortSignal,
+  ): Promise<Record<string, unknown>> {
+    const app = requiredText(input.app, "app");
+    const elementIndex = nonNegativeInteger(
+      input.elementIndex,
+      "elementIndex",
+    );
+    const depth = clampInteger(
+      input.depth ?? this.maxAccessibilityDepth,
+      0,
+      20,
+    );
+    const maxElements = clampInteger(
+      input.maxElements ?? this.maxAccessibilityElements,
+      1,
+      5_000,
+    );
+    const operation =
+      input.operation === "set_element_value" ? "set_value" : "perform";
+    const argument =
+      input.operation === "set_element_value"
+        ? requiredString(input.value, "value")
+        : input.operation === "perform_element_action"
+          ? requiredText(input.action, "action")
+          : "AXPress";
+    const action = await this.runJson(
+      "osascript",
+      [
+        "-l",
+        "JavaScript",
+        scripts.accessibilityAction,
+        app,
+        String(elementIndex),
+        operation,
+        argument,
+        String(depth),
+        String(maxElements),
+      ],
+      signal,
+    );
+    await abortableDelay(
+      clampInteger(input.waitMs ?? 300, 0, 10_000),
+      signal,
+    );
+    return {
+      action,
+      state: await this.getAppState(app, input, signal),
+    };
+  }
+
+  private async getAppState(
+    app: string,
+    input: MacOSControlInput,
+    signal?: AbortSignal,
+  ): Promise<Record<string, unknown>> {
+    const depth = clampInteger(
+      input.depth ?? this.maxAccessibilityDepth,
+      0,
+      20,
+    );
+    const maxElements = clampInteger(
+      input.maxElements ?? this.maxAccessibilityElements,
+      1,
+      5_000,
+    );
+    const accessibility = await this.runJson(
+      "osascript",
+      [
+        "-l",
+        "JavaScript",
+        scripts.accessibilityTree,
+        app,
+        String(depth),
+        String(maxElements),
+      ],
+      signal,
+    );
+    const screenshot =
+      input.includeScreenshot === false
+        ? null
+        : await this.takeScreenshot(undefined, signal);
+    return { app, accessibility, screenshot };
   }
 
   private async takeScreenshot(
@@ -409,7 +688,6 @@ export class MacOSControlCapability
   ): Promise<MacOSPermissionStatus> {
     const native = await this.safeRunJson<{
       accessibility?: boolean;
-      screenRecording?: boolean;
     }>(
       "osascript",
       ["-l", "JavaScript", scripts.permissions],
@@ -420,16 +698,14 @@ export class MacOSControlCapability
       [scripts.automationPermission],
       signal,
     );
+    const screenRecording = await this.probeScreenRecording(signal);
     const status: MacOSPermissionStatus = {
       accessibility:
         typeof native?.accessibility === "boolean"
           ? native.accessibility
           : null,
       automation: automation === null ? false : true,
-      screenRecording:
-        typeof native?.screenRecording === "boolean"
-          ? native.screenRecording
-          : null,
+      screenRecording,
       requested: true,
     };
     if (
@@ -441,6 +717,37 @@ export class MacOSControlCapability
         "Enable your terminal (and osascript if listed) in System Settings → Privacy & Security → Accessibility, Automation, and Screen Recording, then restart Agent OS.";
     }
     return status;
+  }
+
+  private async probeScreenRecording(
+    signal?: AbortSignal,
+  ): Promise<boolean | null> {
+    let temporaryDirectory: string | undefined;
+    try {
+      temporaryDirectory = await mkdtemp(
+        resolve(tmpdir(), "agent-os-screen-recording-"),
+      );
+      const result = await this.safeRun(
+        "screencapture",
+        [
+          "-x",
+          "-R0,0,1,1",
+          resolve(temporaryDirectory, "permission-check.png"),
+        ],
+        signal,
+      );
+      return result !== null;
+    } catch {
+      return null;
+    } finally {
+      if (temporaryDirectory) {
+        try {
+          await rm(temporaryDirectory, { recursive: true, force: true });
+        } catch {
+          // The permission result should not be obscured by temp cleanup.
+        }
+      }
+    }
   }
 
   private run(
@@ -571,6 +878,13 @@ function clampInteger(value: unknown, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function nonNegativeInteger(value: unknown, name: string): number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+    throw new ValidationError(`Input '${name}' must be a non-negative integer`);
+  }
+  return value;
+}
+
 function requiredText(value: unknown, name: string): string {
   if (typeof value !== "string" || value.trim() === "") {
     throw new ValidationError(`Input '${name}' is required`);
@@ -583,6 +897,123 @@ function requiredString(value: unknown, name: string): string {
     throw new ValidationError(`Input '${name}' is required`);
   }
   return value;
+}
+
+function requiredUrl(value: unknown): string {
+  const url = requiredText(value, "url");
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new ValidationError("Input 'url' must be an absolute URL");
+  }
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new ValidationError("Input 'url' must use http or https");
+  }
+  return parsed.href;
+}
+
+function webTarget(input: MacOSControlInput): WebTarget {
+  const target = optionalWebTarget(input);
+  if (!target) {
+    throw new ValidationError(
+      "Provide selector, targetText, label, or name for this web operation",
+    );
+  }
+  return target;
+}
+
+function optionalWebTarget(
+  input: MacOSControlInput,
+): WebTarget | undefined {
+  const target: WebTarget = {
+    selector: optionalText(input.selector),
+    targetText: optionalText(input.targetText),
+    label: optionalText(input.label),
+    name: optionalText(input.name),
+  };
+  return target.selector ||
+    target.targetText ||
+    target.label ||
+    target.name
+    ? target
+    : undefined;
+}
+
+function webSelectChoice(input: MacOSControlInput): WebSelectChoice {
+  const choice: WebSelectChoice = {
+    optionText: optionalText(input.optionText),
+    optionValue:
+      typeof input.optionValue === "string"
+        ? input.optionValue
+        : undefined,
+    optionIndex:
+      input.optionIndex === undefined
+        ? undefined
+        : nonNegativeInteger(input.optionIndex, "optionIndex"),
+  };
+  const count = [
+    choice.optionText !== undefined,
+    choice.optionValue !== undefined,
+    choice.optionIndex !== undefined,
+  ].filter(Boolean).length;
+  const selectorTargetsOption = optionalText(input.selector)
+    ?.toLowerCase()
+    .includes("option");
+  if (count === 0 && !selectorTargetsOption) {
+    throw new ValidationError(
+      "Provide optionText, optionValue, or optionIndex for web_select",
+    );
+  }
+  if (count > 1) {
+    throw new ValidationError(
+      "Provide only one of optionText, optionValue, or optionIndex",
+    );
+  }
+  return choice;
+}
+
+function webSnapshotOptions(
+  input: MacOSControlInput,
+): WebSnapshotOptions {
+  return {
+    waitMs:
+      input.waitMs === undefined
+        ? undefined
+        : clampInteger(input.waitMs, 0, 10_000),
+    maxHtmlChars:
+      input.maxHtmlChars === undefined
+        ? undefined
+        : clampInteger(input.maxHtmlChars, 1_000, 200_000),
+    maxTextChars:
+      input.maxTextChars === undefined
+        ? undefined
+        : clampInteger(input.maxTextChars, 1_000, 100_000),
+  };
+}
+
+function optionalText(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() !== ""
+    ? value.trim()
+    : undefined;
+}
+
+function abortableDelay(
+  milliseconds: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (milliseconds === 0) return Promise.resolve();
+  return new Promise((resolvePromise, reject) => {
+    const timer = setTimeout(resolvePromise, milliseconds);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        reject(signal.reason ?? new Error("Operation aborted"));
+      },
+      { once: true },
+    );
+  });
 }
 
 function commandErrorDetails(error: unknown): unknown {

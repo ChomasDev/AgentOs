@@ -1,8 +1,8 @@
 schemaVersion: 1
 id: pc-control
 name: macOS PC Control
-version: 0.1.0
-description: Control macOS applications, mouse, keyboard, accessibility UI, and screenshots
+version: 0.4.0
+description: Control macOS applications and a DOM-aware Chromium browser
 interfaces:
   - id: pc-control.action
     kind: action
@@ -10,7 +10,7 @@ interfaces:
     export: .
     className: MacOSControlCapability
     name: MacOSControlCapability
-    description: Controls the local Mac through native macOS automation APIs
+    description: Controls the local Mac and websites through native macOS and Chromium DevTools APIs
     surfaces:
       - local
       - macos
@@ -38,11 +38,28 @@ interfaces:
         required: false
         default: 400
         description: Maximum UI elements returned by get_accessibility_tree
+      - key: browserApp
+        env: PC_CONTROL_BROWSER_APP
+        type: string
+        required: false
+        default: Google Chrome
+        description: Chromium-based macOS app used for DOM-aware web control
+      - key: browserProfileDirectory
+        env: PC_CONTROL_BROWSER_PROFILE
+        type: string
+        required: false
+        description: Persistent profile directory for the controlled browser
+      - key: webStartupTimeoutMs
+        env: PC_CONTROL_WEB_STARTUP_TIMEOUT
+        type: number
+        required: false
+        default: 10000
+        description: Time allowed for the controlled browser to start
     capability:
       id: macos.pc-control
-      version: 0.1.0
+      version: 0.4.0
       name: control_macos
-      description: Open, focus, and quit apps; inspect accessibility UI; move/click/scroll the mouse; type or press keys; and take screenshots.
+      description: Prefer element-index actions for native apps and web_* operations for websites. Use web_select for select/option controls. Option selectors passed to web_click are selected automatically.
       inputSchema:
         type: object
         properties:
@@ -55,12 +72,23 @@ interfaces:
               - quit_app
               - list_apps
               - get_accessibility_tree
+              - get_app_state
+              - click_element
+              - set_element_value
+              - perform_element_action
               - move_mouse
               - click
               - scroll
               - type_text
               - press_key
               - screenshot
+              - web_open
+              - web_snapshot
+              - web_click
+              - web_fill
+              - web_select
+              - web_press
+              - web_wait
           app:
             type: string
           text:
@@ -97,6 +125,60 @@ interfaces:
             type: integer
             minimum: 1
             maximum: 5000
+          url:
+            type: string
+            description: URL for web_open
+          selector:
+            type: string
+            description: CSS selector for a web element
+          targetText:
+            type: string
+            description: Visible text used to locate a web element
+          label:
+            type: string
+            description: Visible label associated with a web form field
+          name:
+            type: string
+            description: HTML name attribute used to locate a web form field
+          value:
+            type: string
+            description: Value for web_fill; passwords are redacted in results
+          waitMs:
+            type: integer
+            minimum: 0
+            maximum: 10000
+          maxHtmlChars:
+            type: integer
+            minimum: 1000
+            maximum: 200000
+          maxTextChars:
+            type: integer
+            minimum: 1000
+            maximum: 100000
+          timeoutMs:
+            type: integer
+            minimum: 100
+            maximum: 30000
+          elementIndex:
+            type: integer
+            minimum: 0
+            description: Fresh elementIndex from get_app_state or the state returned by the previous element action
+          action:
+            type: string
+            description: Accessibility action exposed by the element, such as AXPress or AXShowMenu
+          includeScreenshot:
+            type: boolean
+            description: Include a screenshot in app-state observations; defaults to true
+          optionText:
+            type: string
+            description: Visible option text for web_select
+          optionValue:
+            type: string
+            description: HTML option value for web_select
+          optionIndex:
+            type: integer
+            minimum: 0
+            description: Zero-based option index for web_select
         required:
           - operation
         additionalProperties: false
@@ -111,6 +193,10 @@ interfaces:
         - accessibility
         - mouse
         - keyboard
+        - browser
+        - html
+        - dom
+        - virtual-input
       execution:
         timeoutMs: 30000
         idempotent: false

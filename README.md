@@ -237,7 +237,29 @@ Search the web for the latest TypeScript release.
 
 The `pc-control` action uses macOS-native automation to open/focus/quit apps,
 inspect an app's accessibility tree, move/click/scroll the mouse, type text,
-press keyboard shortcuts, list running apps, and capture screenshots.
+press keyboard shortcuts, list running apps, and capture screenshots. For
+websites, prefer the DOM-aware `web_open`, `web_snapshot`, `web_fill`,
+`web_select`, `web_click`, `web_press`, and `web_wait` operations. They locate elements by
+CSS selector, label, name, or visible text and return the updated URL, title,
+visible text, HTML, and interactive elements after each action.
+
+Web control opens a dedicated Google Chrome profile under
+`.agent-os/browser-profile` by default. The profile persists its login session.
+`web_fill` atomically focuses, fills, dispatches input/change events, and
+verifies a field, which avoids coordinate-click and lost-focus typing errors.
+`web_select` chooses native options by visible text, HTML value, or zero-based
+index, dispatches input/change events, verifies the result, and returns the
+updated page. Passing an `<option>` selector to `web_click` automatically uses
+the same selection path. When `web_press` receives an element target, it now
+focuses that element before dispatching the key.
+
+For native apps, `get_app_state` returns indexed accessibility elements plus an
+optional screenshot. `click_element`, `set_element_value`, and
+`perform_element_action` operate directly on a fresh `elementIndex` and then
+return a new app state. These virtual element actions do not move the physical
+mouse. Element indexes are intentionally ephemeral: always use an index from
+the latest returned state. Coordinate mouse operations remain available as a
+fallback for apps that do not expose usable accessibility controls.
 
 When the action is enabled, Agent OS requests Accessibility, Automation, and
 Screen Recording access during startup, before terminal input begins. Approve

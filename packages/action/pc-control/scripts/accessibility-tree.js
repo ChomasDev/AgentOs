@@ -48,9 +48,11 @@ function run(argv) {
       truncated = true;
       return null;
     }
+    const elementIndex = seen;
     seen += 1;
 
     const node = {
+      elementIndex,
       role: read(() => element.role()),
       subrole: read(() => element.subrole()),
       name: read(() => element.name()),
