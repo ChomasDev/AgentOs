@@ -4,11 +4,13 @@ on run argv
 
   if (count of argv) > 1 then
     repeat with modifierName in items 2 thru -1 of argv
-      if modifierName is "command" then
+      -- `repeat with x in list` binds a reference; coerce before comparing.
+      set modifierName to modifierName as text
+      if modifierName is "command" or modifierName is "cmd" then
         set end of modifierList to command down
-      else if modifierName is "control" then
+      else if modifierName is "control" or modifierName is "ctrl" then
         set end of modifierList to control down
-      else if modifierName is "option" then
+      else if modifierName is "option" or modifierName is "alt" then
         set end of modifierList to option down
       else if modifierName is "shift" then
         set end of modifierList to shift down

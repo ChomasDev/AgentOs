@@ -156,7 +156,7 @@ export class OpenAIProvider implements AIProvider {
       ...toCallSettings(resolveSettings(this.settings, options.settings)),
       abortSignal: options.signal,
       tools: createExecutableTools(definitions),
-      stopWhen: stepCountIs(Math.max(1, options.maxSteps ?? 5)),
+        stopWhen: stepCountIs(Math.max(1, options.maxSteps ?? 100)),
     };
 
     if (options.stream) {

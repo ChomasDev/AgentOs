@@ -11,7 +11,9 @@ interfaces:
   orchestrator:
     - orchestrator-default
   agent:
-    - agent-loop
+    - id: agent-loop
+      config:
+        maxSteps: 100
   input:
     - cronjob
     - id: openrouter-api

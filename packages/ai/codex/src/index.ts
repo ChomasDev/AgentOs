@@ -216,7 +216,7 @@ export class CodexProvider implements AIProvider {
   ): AsyncGenerator<string> {
     const thread = this.startThread();
     const schema = createFunctionStepSchema(definitions);
-    const maxSteps = Math.max(1, options.maxSteps ?? 5);
+    const maxSteps = Math.max(1, options.maxSteps ?? 100);
     let prompt = createPrompt(
       input,
       options.instructions,

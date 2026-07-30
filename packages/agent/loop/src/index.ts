@@ -37,7 +37,7 @@ export class DefaultAgentLoop implements AgentLoop {
     this.model = options.model;
     this.capabilityDiscovery = options.capabilityDiscovery;
     this.maxCapabilities = Math.max(1, options.maxCapabilities ?? 50);
-    this.maxSteps = Math.max(1, options.maxSteps ?? 5);
+    this.maxSteps = Math.max(1, options.maxSteps ?? 100);
     this.instructions = options.instructions ?? defaultInstructions;
   }
 

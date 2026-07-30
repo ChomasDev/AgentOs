@@ -12,6 +12,17 @@ interfaces:
     description: Executes the model/tool loop for a message
     surfaces:
       - local
+    config:
+      - key: maxSteps
+        type: number
+        required: false
+        default: 100
+        description: Maximum model/tool steps per run before failing
+      - key: maxCapabilities
+        type: number
+        required: false
+        default: 50
+        description: Maximum capabilities loaded into a single run
     startup:
       when: always
     name: DefaultAgentLoop
