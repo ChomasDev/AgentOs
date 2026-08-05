@@ -36,6 +36,7 @@ interfaces:
         log: true
   action:
     - action-cli
+    - chrome-control
     - pc-control
     - perplexity-search
     - cronjob

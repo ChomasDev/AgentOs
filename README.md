@@ -140,6 +140,7 @@ requested by `agent-conf.yaml` together with their requirements.
 | `@agent-os/io-cli` | input (+ CLI output in same package) |
 | `@agent-os/input-cronjob` | input (+ cron management capability) |
 | `@agent-os/action-cli` | action |
+| `@agent-os/action-chrome-control` | action (Chrome on macOS) |
 | `@agent-os/action-pc-control` | action (macOS) |
 | `@agent-os/action-perplexityserach` | action |
 | `@agent-os/openai` | ai |
@@ -233,12 +234,14 @@ capability. You can test it in the main app with a prompt such as:
 Search the web for the latest TypeScript release.
 ```
 
-## macOS PC control
+## macOS PC and Chrome control
 
 The `pc-control` action uses macOS-native automation to open/focus/quit apps,
-inspect an app's accessibility tree, move/click/scroll the mouse, type text,
-press keyboard shortcuts, list running apps, and capture screenshots. For
-websites, prefer the DOM-aware `web_open`, `web_snapshot`, `web_fill`,
+inspect an app's accessibility tree, move/click/drag/scroll the mouse, type text,
+press keyboard shortcuts, list running apps, and capture screenshots.
+
+The separate `chrome-control` action owns browser automation. For websites,
+use the DOM-aware `web_open`, `web_snapshot`, `web_fill`,
 `web_select`, `web_click`, `web_press`, and `web_wait` operations. They locate elements by
 CSS selector, label, name, or visible text and return the updated URL, title,
 visible text, HTML, and interactive elements after each action.
@@ -259,7 +262,9 @@ optional screenshot. `click_element`, `set_element_value`, and
 return a new app state. These virtual element actions do not move the physical
 mouse. Element indexes are intentionally ephemeral: always use an index from
 the latest returned state. Coordinate mouse operations remain available as a
-fallback for apps that do not expose usable accessibility controls.
+fallback for apps that do not expose usable accessibility controls. The `drag`
+operation accepts start/end coordinates plus configurable duration and movement
+steps, which supports visual canvases such as Figma.
 
 When the action is enabled, Agent OS requests Accessibility, Automation, and
 Screen Recording access during startup, before terminal input begins. Approve

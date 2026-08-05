@@ -1,0 +1,118 @@
+schemaVersion: 1
+id: chrome-control
+name: Chrome Control
+version: 0.1.0
+description: Control websites through a dedicated Chrome profile and Chromium DevTools
+interfaces:
+  - id: chrome-control.action
+    kind: action
+    entry: .
+    export: .
+    className: ChromeControlCapability
+    name: ChromeControlCapability
+    description: Controls websites through Chrome without depending on native PC control
+    surfaces:
+      - local
+      - macos
+    permissions:
+      - filesystem.write
+    config:
+      - key: browserApp
+        env: CHROME_CONTROL_BROWSER_APP
+        type: string
+        required: false
+        default: Google Chrome
+        description: Chromium-based macOS application used for web control
+      - key: browserProfileDirectory
+        env: CHROME_CONTROL_BROWSER_PROFILE
+        type: string
+        required: false
+        description: Persistent profile directory for the controlled browser
+      - key: webStartupTimeoutMs
+        env: CHROME_CONTROL_STARTUP_TIMEOUT
+        type: number
+        required: false
+        default: 10000
+        description: Time allowed for the controlled browser to start
+    capability:
+      id: chrome.control
+      version: 0.1.0
+      name: control_chrome
+      description: Use web_* operations for DOM-aware website control in a dedicated Chrome profile.
+      inputSchema:
+        type: object
+        properties:
+          operation:
+            type: string
+            enum:
+              - web_open
+              - web_snapshot
+              - web_click
+              - web_fill
+              - web_select
+              - web_press
+              - web_wait
+          url:
+            type: string
+            description: URL for web_open
+          selector:
+            type: string
+            description: CSS selector for a web element
+          targetText:
+            type: string
+            description: Visible text used to locate a web element
+          label:
+            type: string
+            description: Visible label associated with a web form field
+          name:
+            type: string
+            description: HTML name attribute used to locate a web form field
+          value:
+            type: string
+            description: Value for web_fill; passwords are redacted in results
+          key:
+            type: string
+            description: Key for web_press
+          waitMs:
+            type: integer
+            minimum: 0
+            maximum: 10000
+          maxHtmlChars:
+            type: integer
+            minimum: 1000
+            maximum: 200000
+          maxTextChars:
+            type: integer
+            minimum: 1000
+            maximum: 100000
+          timeoutMs:
+            type: integer
+            minimum: 100
+            maximum: 30000
+          optionText:
+            type: string
+            description: Visible option text for web_select
+          optionValue:
+            type: string
+            description: HTML option value for web_select
+          optionIndex:
+            type: integer
+            minimum: 0
+            description: Zero-based option index for web_select
+        required:
+          - operation
+        additionalProperties: false
+      permissions:
+        - filesystem.write
+      tags:
+        - browser
+        - chrome
+        - chromium
+        - html
+        - dom
+        - web
+      execution:
+        timeoutMs: 30000
+        idempotent: false
+    startup:
+      when: always

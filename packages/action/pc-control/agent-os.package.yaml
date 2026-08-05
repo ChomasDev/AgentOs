@@ -1,8 +1,8 @@
 schemaVersion: 1
 id: pc-control
 name: macOS PC Control
-version: 0.4.0
-description: Control macOS applications and a DOM-aware Chromium browser
+version: 0.5.0
+description: Control macOS applications through native automation
 interfaces:
   - id: pc-control.action
     kind: action
@@ -10,7 +10,7 @@ interfaces:
     export: .
     className: MacOSControlCapability
     name: MacOSControlCapability
-    description: Controls the local Mac and websites through native macOS and Chromium DevTools APIs
+    description: Controls the local Mac through native macOS automation APIs
     surfaces:
       - local
       - macos
@@ -38,28 +38,11 @@ interfaces:
         required: false
         default: 400
         description: Maximum UI elements returned by get_accessibility_tree
-      - key: browserApp
-        env: PC_CONTROL_BROWSER_APP
-        type: string
-        required: false
-        default: Google Chrome
-        description: Chromium-based macOS app used for DOM-aware web control
-      - key: browserProfileDirectory
-        env: PC_CONTROL_BROWSER_PROFILE
-        type: string
-        required: false
-        description: Persistent profile directory for the controlled browser
-      - key: webStartupTimeoutMs
-        env: PC_CONTROL_WEB_STARTUP_TIMEOUT
-        type: number
-        required: false
-        default: 10000
-        description: Time allowed for the controlled browser to start
     capability:
       id: macos.pc-control
-      version: 0.4.0
+      version: 0.5.0
       name: control_macos
-      description: Prefer element-index actions for native apps and web_* operations for websites. Use web_select for select/option controls. Option selectors passed to web_click are selected automatically.
+      description: Prefer element-index actions for exposed native controls and screenshot plus coordinate click/drag for visual canvases such as Figma.
       inputSchema:
         type: object
         properties:
@@ -78,17 +61,11 @@ interfaces:
               - perform_element_action
               - move_mouse
               - click
+              - drag
               - scroll
               - type_text
               - press_key
               - screenshot
-              - web_open
-              - web_snapshot
-              - web_click
-              - web_fill
-              - web_select
-              - web_press
-              - web_wait
           app:
             type: string
           text:
@@ -104,6 +81,18 @@ interfaces:
             type: number
           y:
             type: number
+          fromX:
+            type: number
+            description: Drag start x coordinate
+          fromY:
+            type: number
+            description: Drag start y coordinate
+          toX:
+            type: number
+            description: Drag end x coordinate
+          toY:
+            type: number
+            description: Drag end y coordinate
           button:
             type: string
             enum: [left, right, center]
@@ -111,6 +100,16 @@ interfaces:
             type: integer
             minimum: 1
             maximum: 3
+          durationMs:
+            type: integer
+            minimum: 0
+            maximum: 10000
+            description: Duration of a drag gesture in milliseconds; defaults to 500
+          steps:
+            type: integer
+            minimum: 1
+            maximum: 240
+            description: Number of interpolated pointer movements during a drag; defaults to 30
           deltaX:
             type: integer
           deltaY:
@@ -125,40 +124,13 @@ interfaces:
             type: integer
             minimum: 1
             maximum: 5000
-          url:
-            type: string
-            description: URL for web_open
-          selector:
-            type: string
-            description: CSS selector for a web element
-          targetText:
-            type: string
-            description: Visible text used to locate a web element
-          label:
-            type: string
-            description: Visible label associated with a web form field
-          name:
-            type: string
-            description: HTML name attribute used to locate a web form field
           value:
             type: string
-            description: Value for web_fill; passwords are redacted in results
+            description: Value for set_element_value
           waitMs:
             type: integer
             minimum: 0
             maximum: 10000
-          maxHtmlChars:
-            type: integer
-            minimum: 1000
-            maximum: 200000
-          maxTextChars:
-            type: integer
-            minimum: 1000
-            maximum: 100000
-          timeoutMs:
-            type: integer
-            minimum: 100
-            maximum: 30000
           elementIndex:
             type: integer
             minimum: 0
@@ -169,16 +141,6 @@ interfaces:
           includeScreenshot:
             type: boolean
             description: Include a screenshot in app-state observations; defaults to true
-          optionText:
-            type: string
-            description: Visible option text for web_select
-          optionValue:
-            type: string
-            description: HTML option value for web_select
-          optionIndex:
-            type: integer
-            minimum: 0
-            description: Zero-based option index for web_select
         required:
           - operation
         additionalProperties: false
@@ -193,9 +155,6 @@ interfaces:
         - accessibility
         - mouse
         - keyboard
-        - browser
-        - html
-        - dom
         - virtual-input
       execution:
         timeoutMs: 30000

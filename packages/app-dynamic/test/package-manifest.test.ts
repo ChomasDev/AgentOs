@@ -100,5 +100,5 @@ test("all workspace capability packages have a valid YAML manifest", async () =>
     }
   }
 
-  assert.equal(manifests.length, 13);
+  assert.equal(manifests.length, 14);
 });

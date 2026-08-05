@@ -1,0 +1,108 @@
+import type { CapabilityManifest } from "@agent-os/core/domain";
+
+export const macOSControlManifest: CapabilityManifest = {
+  id: "macos.pc-control",
+  version: "0.5.0",
+  name: "control_macos",
+  description:
+    "Controls the local Mac. Prefer element actions for exposed controls and coordinate actions for visual canvases.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      operation: {
+        type: "string",
+        enum: [
+          "permissions",
+          "open_app",
+          "focus_app",
+          "quit_app",
+          "list_apps",
+          "get_accessibility_tree",
+          "get_app_state",
+          "click_element",
+          "set_element_value",
+          "perform_element_action",
+          "move_mouse",
+          "click",
+          "drag",
+          "scroll",
+          "type_text",
+          "press_key",
+          "screenshot",
+        ],
+      },
+      app: { type: "string", description: "macOS application name." },
+      text: { type: "string" },
+      key: {
+        type: "string",
+        description:
+          "Character or special key: return, tab, space, escape, delete, arrows, home, end, page_up, or page_down.",
+      },
+      modifiers: {
+        type: "array",
+        items: {
+          type: "string",
+          enum: ["command", "control", "option", "shift"],
+        },
+      },
+      x: { type: "number" },
+      y: { type: "number" },
+      fromX: { type: "number", description: "Drag start x coordinate." },
+      fromY: { type: "number", description: "Drag start y coordinate." },
+      toX: { type: "number", description: "Drag end x coordinate." },
+      toY: { type: "number", description: "Drag end y coordinate." },
+      button: { type: "string", enum: ["left", "right", "center"] },
+      clicks: { type: "integer", minimum: 1, maximum: 3 },
+      durationMs: {
+        type: "integer",
+        minimum: 0,
+        maximum: 10_000,
+        description: "Drag duration in milliseconds. Defaults to 500.",
+      },
+      steps: {
+        type: "integer",
+        minimum: 1,
+        maximum: 240,
+        description: "Interpolated drag movements. Defaults to 30.",
+      },
+      deltaX: { type: "integer" },
+      deltaY: { type: "integer" },
+      path: { type: "string", description: "Output PNG path." },
+      depth: { type: "integer", minimum: 0, maximum: 20 },
+      maxElements: { type: "integer", minimum: 1, maximum: 5_000 },
+      value: { type: "string", description: "Value for set_element_value." },
+      waitMs: { type: "integer", minimum: 0, maximum: 10_000 },
+      elementIndex: {
+        type: "integer",
+        minimum: 0,
+        description: "Fresh element index from the latest app state.",
+      },
+      action: {
+        type: "string",
+        description: "Accessibility action such as AXPress or AXShowMenu.",
+      },
+      includeScreenshot: {
+        type: "boolean",
+        description: "Include screenshots in app-state observations.",
+      },
+    },
+    required: ["operation"],
+    additionalProperties: false,
+  },
+  outputSchema: { type: "object", additionalProperties: true },
+  permissions: [
+    "macos.accessibility",
+    "macos.automation",
+    "macos.screen-recording",
+    "filesystem.write",
+  ],
+  tags: [
+    "macos",
+    "desktop",
+    "accessibility",
+    "mouse",
+    "keyboard",
+    "virtual-input",
+  ],
+  execution: { timeoutMs: 30_000, idempotent: false },
+};

@@ -217,6 +217,12 @@ importers:
         specifier: ^7.0.0
         version: 7.0.2
 
+  packages/action/chrome-control:
+    dependencies:
+      '@agent-os/core':
+        specifier: workspace:*
+        version: link:../../..
+
   packages/action/cli:
     dependencies:
       '@agent-os/core':
