@@ -8,7 +8,7 @@ interfaces:
     kind: input
     entry: .
     export: .
-    className: CronjobInput
+    className: CronjobAdapter
     description: Fires scheduled prompts into the agent loop
     channel: cronjob
     surfaces:
@@ -30,7 +30,7 @@ interfaces:
     kind: action
     entry: .
     export: .
-    className: ManageCronjobsCapability
+    className: CronjobAdapter
     description: Adds, lists, suspends, resumes, or removes scheduled prompts
     surfaces:
       - local

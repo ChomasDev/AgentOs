@@ -1,5 +1,6 @@
 import type { AgentLoopEventHandler } from "../agent/agent-loop.js";
 import type { InputMessage } from "../input/input-interface.js";
+import type { MemoryProposal } from "../memory/memory-proposal.js";
 import type {
   OutputChannel,
   OutputInterface,
@@ -22,6 +23,8 @@ export interface OrchestrationDecision {
   outputChannel: OutputChannel;
   /** Extra response copies or channel-specific messages. */
   additionalOutputs?: readonly AdditionalOrchestrationOutput[];
+  /** Durable user facts explicitly identified from the current message. */
+  memoryProposals?: readonly MemoryProposal[];
   reason?: string;
 }
 

@@ -86,7 +86,6 @@ export class ConversationHistory {
   ): Promise<readonly MemoryEntry[]> {
     if (this.memoryLimit === 0 || !message.userId) return [];
     return this.memory.recall({
-      text: message.text,
       kinds: ["semantic", "episodic", "procedural"],
       userId: message.userId,
       limit: this.memoryLimit,

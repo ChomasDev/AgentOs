@@ -607,6 +607,8 @@ export class ManageCronjobsCapability
   }
 }
 
+export { CronjobAdapter } from "./cronjob-adapter.js";
+
 interface CronjobRow {
   id: string;
   name: string;

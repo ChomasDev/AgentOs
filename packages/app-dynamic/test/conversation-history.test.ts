@@ -27,6 +27,24 @@ test("loads chat history by session without leaking other sessions", async () =>
   assert.doesNotMatch(next.text, /Secret/);
 });
 
+test("loads durable user memory in a new session", async () => {
+  const memory = new TestMemory();
+  await memory.remember({
+    id: "preference-1",
+    kind: "semantic",
+    content: "The user prefers responses in Italian.",
+    createdAt: new Date(),
+    userId: "user-1",
+  });
+  const history = new ConversationHistory(memory);
+  const contextualized = await history.contextualize({
+    ...message("new", "new-session", "Which language should you use?"),
+    userId: "user-1",
+  });
+
+  assert.match(contextualized.text, /The user prefers responses in Italian/);
+});
+
 class TestMemory implements Memory {
   private entries: MemoryEntry[] = [];
 

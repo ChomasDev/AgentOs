@@ -28,6 +28,14 @@ test("keeps a valid Telegram response route and web acknowledgement", async () =
               text: "Okay, done.",
             },
           ],
+          memoryProposals: [
+            {
+              kind: "semantic",
+              content: "The user prefers concise answers.",
+              reason: "Useful response preference.",
+              confidence: 0.95,
+            },
+          ],
           reason: "Deliver the report to Telegram and acknowledge on web.",
         },
       } as AIFunctionCallResult<TArguments>;
@@ -64,6 +72,15 @@ test("keeps a valid Telegram response route and web acknowledgement", async () =
       outputChannel: "web",
       content: "text",
       text: "Okay, done.",
+    },
+  ]);
+  assert.deepEqual(decision.memoryProposals, [
+    {
+      operation: "remember",
+      kind: "semantic",
+      content: "The user prefers concise answers.",
+      reason: "Useful response preference.",
+      confidence: 0.95,
     },
   ]);
 });

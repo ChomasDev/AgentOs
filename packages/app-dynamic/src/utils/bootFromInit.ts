@@ -13,16 +13,12 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import OS from "../Os/index.js";
 import {
-  buildOptions,
   createEnvironment,
   createKindInstances,
-  instantiate,
   requireFirst,
-  SkipInstantiationError,
 } from "./component-factory.js";
 import type { InitConf } from "./getinitConf.js";
 import {
-  interfacesFor,
   loadRegistryIndex,
   overlayLoadedManifests,
 } from "./package-registry.js";
@@ -81,13 +77,35 @@ export async function bootFromInit(init: InitConf): Promise<void> {
     "discovery",
   );
 
+  const shutdownRef: { current?: () => void } = {};
+  const sharedInstances = new Map<string, unknown>();
+  const databasePath = env.getOrDefault(
+    "CRONJOB_DB_PATH",
+    resolve(repositoryRoot, ".agent-os/cronjobs.sqlite"),
+  );
+  const inputs = createKindInstances<InputInterface>(
+    init.modules.input,
+    "input",
+    registry,
+    {
+      env,
+      databasePath,
+      onInterrupt: () => shutdownRef.current?.(),
+      workingDirectory: repositoryRoot,
+    },
+    env,
+    database,
+    sharedInstances,
+  );
+
   for (const action of createKindInstances<Capability>(
     init.modules.action,
     "action",
     registry,
-    { env, cwd: repositoryRoot },
+    { env, cwd: repositoryRoot, databasePath },
     env,
     database,
+    sharedInstances,
   )) {
     await initializeCapability(action);
     await capabilityDiscovery.register(action);
@@ -95,36 +113,18 @@ export async function bootFromInit(init: InitConf): Promise<void> {
 
   // Actions that live on input packages (e.g. cronjob manage) when not listed under action.
   for (const loaded of init.modules.input) {
-    for (const iface of interfacesFor(
-      loaded.id,
+    if (init.modules.action.some((entry) => entry.id === loaded.id)) continue;
+    for (const action of createKindInstances<Capability>(
+      [loaded],
       "action",
       registry,
-      loaded.installedInterfaces,
+      { env, cwd: repositoryRoot, databasePath },
+      env,
+      database,
+      sharedInstances,
     )) {
-      const alreadyListed = init.modules.action.some(
-        (entry) => entry.id === loaded.id,
-      );
-      if (alreadyListed) {
-        continue;
-      }
-      try {
-        const action = instantiate(
-          loaded.module,
-          iface.className,
-          buildOptions(iface.config, env, {
-            env,
-            cwd: repositoryRoot,
-            database: database.scope(loaded.id),
-          }),
-        ) as Capability;
-        await initializeCapability(action);
-        await capabilityDiscovery.register(action);
-      } catch (error) {
-        if (error instanceof SkipInstantiationError) {
-          continue;
-        }
-        throw error;
-      }
+      await initializeCapability(action);
+      await capabilityDiscovery.register(action);
     }
   }
 
@@ -152,27 +152,6 @@ export async function bootFromInit(init: InitConf): Promise<void> {
     "orchestrator",
   );
 
-  const shutdownRef: { current?: () => void } = {};
-  // Share instances across kinds so dual input/output adapters
-  // keep HTTP request context for write().
-  const sharedInstances = new Map<string, unknown>();
-  const inputs = createKindInstances<InputInterface>(
-    init.modules.input,
-    "input",
-    registry,
-    {
-      env,
-      onInterrupt: () => shutdownRef.current?.(),
-      databasePath: env.getOrDefault(
-        "CRONJOB_DB_PATH",
-        resolve(repositoryRoot, ".agent-os/cronjobs.sqlite"),
-      ),
-      workingDirectory: repositoryRoot,
-    },
-    env,
-    database,
-    sharedInstances,
-  );
   const outputs = createKindInstances<OutputInterface>(
     init.modules.output,
     "output",

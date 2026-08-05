@@ -6,6 +6,7 @@ import type {
 } from "@agent-os/core/domain";
 import { formatAgentLoopEvent } from "../utils/format-agent-loop-event.js";
 import { ConversationHistory } from "./conversation-history.js";
+import { persistMemoryProposals } from "./memory-proposals.js";
 
 export default class OS {
   private bootOptions?: OSBootOptions;
@@ -47,6 +48,11 @@ export default class OS {
       const decision = await bootOptions.orchestrator.orchestrate(
         contextualized,
         bootOptions.output,
+      );
+      await persistMemoryProposals(
+        bootOptions.memory,
+        message,
+        decision.memoryProposals,
       );
       const output = bootOptions.output.find(
         (candidate) => candidate.channel === decision.outputChannel,

@@ -19,6 +19,7 @@ export interface CLIInputOptions {
   output?: NodeJS.WritableStream;
   prompt?: string;
   sessionId?: string;
+  userId?: string;
 }
 
 export class CLIInput implements InputInterface {
@@ -148,6 +149,7 @@ export class CLIInput implements InputInterface {
       id: `input-${randomUUID()}`,
       channel: this.channel,
       sessionId: this.sessionId,
+      userId: this.options.userId ?? "cli-local-user",
       text,
       createdAt: new Date(),
     };

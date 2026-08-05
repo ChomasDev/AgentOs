@@ -9,6 +9,11 @@ import type {
   OrchestratorOptions,
   OutputInterface,
 } from "@agent-os/core/domain";
+import {
+  createMemoryProposalSchema,
+  sanitizeMemoryProposals,
+  type ModelMemoryProposal,
+} from "./memory-routing.js";
 
 export interface DefaultOrchestratorOptions {
   model: AIProvider;
@@ -21,6 +26,7 @@ interface ModelDecision {
   capabilityIds: string[];
   outputChannel: string;
   additionalOutputs: ModelAdditionalOutput[];
+  memoryProposals: ModelMemoryProposal[];
   reason: string;
 }
 
@@ -41,6 +47,7 @@ const defaultInstructions = [
   "An additional output with content=text receives its exact text; use this for a short acknowledgement such as 'Okay, done.' on the originating channel when the substantive response is delivered elsewhere.",
   "When a request from a web/API channel asks to write or prepare a message and a configured messaging channel such as Telegram is available, deliver the substantive response to that messaging channel and acknowledge completion on the originating channel.",
   "Otherwise prefer the output matching the input channel or conversation unless the message or metadata clearly requests another destination.",
+  "Propose memory only for facts, preferences, relationships, or ongoing goals explicitly stated by the user in the current request. Never store guesses, temporary requests, passwords, tokens, or other secrets. Use an empty memoryProposals array when there is nothing durable to remember.",
 ].join(" ");
 
 export class DefaultOrchestrator implements Orchestrator {
@@ -100,6 +107,7 @@ export class DefaultOrchestrator implements Orchestrator {
         capabilityIds,
         outputChannel,
         additionalOutputs,
+        memoryProposals: sanitizeMemoryProposals(result.arguments.memoryProposals),
         reason: result.arguments.reason,
       };
     } catch (error) {
@@ -114,6 +122,7 @@ export class DefaultOrchestrator implements Orchestrator {
         ),
         outputChannel: fallbackOutput.channel,
         additionalOutputs: [],
+        memoryProposals: [],
         reason: `Model routing failed; used deterministic fallback: ${
           error instanceof Error ? error.message : String(error)
         }`,
@@ -180,6 +189,7 @@ function createDecisionFunction(
             additionalProperties: false,
           },
         },
+        memoryProposals: createMemoryProposalSchema(),
         reason: {
           type: "string",
           description: "A short operational explanation of the routing choice.",
@@ -189,6 +199,7 @@ function createDecisionFunction(
         "capabilityIds",
         "outputChannel",
         "additionalOutputs",
+        "memoryProposals",
         "reason",
       ],
       additionalProperties: false,
@@ -207,6 +218,10 @@ function createRoutingPrompt(
         channel: message.channel,
         sessionId: message.sessionId,
         text: message.text,
+        currentUserText:
+          typeof message.metadata?.originalText === "string"
+            ? message.metadata.originalText
+            : message.text,
         metadata: message.metadata ?? {},
       },
       availableCapabilities: capabilities.map((capability) => ({
@@ -281,6 +296,5 @@ function sanitizeAdditionalOutputs(
   return sanitized;
 }
 
-/** @deprecated Use DefaultOrchestrator. */
 export { DefaultOrchestrator as ModelOrchestrator };
 export type ModelOrchestratorOptions = DefaultOrchestratorOptions;
