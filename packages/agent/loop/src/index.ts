@@ -51,7 +51,10 @@ export class DefaultAgentLoop implements AgentLoop {
       type: "discovery.started",
       runId,
       at: new Date(),
-      query: message.text,
+      query:
+        typeof message.metadata?.originalText === "string"
+          ? message.metadata.originalText
+          : message.text,
     });
 
     // Orchestrator owns discovery/selection; the loop only loads by ID.

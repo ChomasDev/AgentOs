@@ -6,6 +6,10 @@ import type {
 } from "@agent-os/core/domain";
 import { formatAgentLoopEvent } from "../utils/format-agent-loop-event.js";
 import { ConversationHistory } from "./conversation-history.js";
+import {
+  addDeliveryContext,
+  selectProgressOutput,
+} from "./delivery-context.js";
 import { persistMemoryProposals } from "./memory-proposals.js";
 
 export default class OS {
@@ -64,12 +68,17 @@ export default class OS {
         );
       }
 
-      const response = await bootOptions.agentLoop.run(contextualized, {
+      const progressOutput = selectProgressOutput(message, bootOptions.output);
+      const agentMessage = addDeliveryContext(
+        contextualized,
+        decision.outputChannel,
+      );
+      const response = await bootOptions.agentLoop.run(agentMessage, {
         capabilityIds: decision.capabilityIds,
         stream: bootOptions.settings.stream,
-        onEvent: bootOptions.settings.showSteps
+        onEvent: bootOptions.settings.showSteps && progressOutput
           ? (event) =>
-              output.write(
+              progressOutput.write(
                 formatAgentLoopEvent(event, bootOptions.env),
               )
           : undefined,
