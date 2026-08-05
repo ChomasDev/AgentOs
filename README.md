@@ -276,6 +276,31 @@ pnpm dev             # run the app
 pnpm start           # start the app
 ```
 
+## Roadmap / TODO
+
+The core agent runtime is complete enough to expand through its abstract
+interfaces. The next work should focus on capabilities and production
+hardening:
+
+- [ ] Add more action capabilities for files, email, calendars, messaging,
+  databases, development workflows, and external services.
+- [ ] Add permission policies and interactive confirmation for sensitive or
+  destructive actions.
+- [ ] Add authentication and authorization for HTTP and multi-user inputs.
+- [ ] Add database schema migrations and versioned capability structures.
+- [ ] Add retries, timeouts, idempotency, and recovery policies for inputs,
+  outputs, capabilities, and scheduled jobs.
+- [ ] Add structured logs, metrics, tracing, and health diagnostics.
+- [ ] Add memory inspection, editing, deletion, retention, and privacy controls.
+- [ ] Improve memory retrieval with relevance ranking, embeddings, and bounded
+  context selection.
+- [ ] Add automated evaluations for orchestration, tool selection, memory,
+  routing, and multi-turn conversations.
+- [ ] Add concurrency limits and durable execution state for long-running and
+  background tasks.
+- [ ] Add more input/output adapters such as Slack, Discord, email, and voice.
+- [ ] Add additional AI and database providers through the existing interfaces.
+
 Set `PERPLEXITY_API_KEY` in `.env` to register the optional `web.search`
 capability. You can test it in the main app with a prompt such as:
 
