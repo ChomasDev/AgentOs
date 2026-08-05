@@ -4,6 +4,7 @@ export interface InputMessage {
   id: string;
   channel: InputChannel;
   sessionId: string;
+  userId?: string;
   text: string;
   createdAt: Date;
   metadata?: Readonly<Record<string, unknown>>;

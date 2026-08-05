@@ -1,20 +1,19 @@
 schemaVersion: 1
 id: telegram
 name: Telegram
-version: 0.1.0
-description: Deliver agent responses to a Telegram chat
+version: 0.2.0
+description: Receive Telegram messages and deliver correlated agent responses
 interfaces:
-  - id: telegram.output
-    kind: output
+  - id: telegram.input
+    kind: input
     entry: .
     export: .
-    className: TelegramOutput
-    description: Telegram messaging destination for delivering completed reports and messages
+    className: TelegramAdapter
+    name: TelegramAdapter
+    description: Receives Telegram messages using Bot API long polling
     channel: telegram
-    surfaces:
-      - network
-    permissions:
-      - network.outbound
+    surfaces: [network]
+    permissions: [network.inbound, network.outbound]
     config:
       - key: botToken
         env: TELEGRAM_BOT_TOKEN
@@ -25,7 +24,42 @@ interfaces:
         env: TELEGRAM_CHAT_ID
         type: string
         required: true
-        description: Destination chat id
+        description: Allowed Telegram chat id
+      - key: pollTimeoutSeconds
+        env: TELEGRAM_POLL_TIMEOUT_SECONDS
+        type: number
+        required: false
+        default: 25
+        description: Telegram long-poll timeout
     startup:
       when: ifConfigured
-    name: TelegramOutput
+  - id: telegram.output
+    kind: output
+    entry: .
+    export: .
+    className: TelegramAdapter
+    name: TelegramAdapter
+    description: Sends responses to the originating or configured Telegram chat
+    channel: telegram
+    surfaces: [network]
+    permissions: [network.outbound]
+    required: [input]
+    config:
+      - key: botToken
+        env: TELEGRAM_BOT_TOKEN
+        type: secret
+        required: true
+        description: Telegram Bot API token
+      - key: chatId
+        env: TELEGRAM_CHAT_ID
+        type: string
+        required: true
+        description: Default Telegram chat id
+      - key: pollTimeoutSeconds
+        env: TELEGRAM_POLL_TIMEOUT_SECONDS
+        type: number
+        required: false
+        default: 25
+        description: Telegram long-poll timeout
+    startup:
+      when: ifConfigured

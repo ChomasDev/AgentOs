@@ -26,8 +26,16 @@ export class CLIInput implements InputInterface {
 
   private listening = false;
   private readline?: ReadlineInterface;
+  private sessionId: string;
 
-  constructor(private readonly options: CLIInputOptions = {}) {}
+  constructor(private readonly options: CLIInputOptions = {}) {
+    this.sessionId = options.sessionId ?? createSessionId();
+  }
+
+  newSession(): string {
+    this.sessionId = createSessionId();
+    return this.sessionId;
+  }
 
   async read(): Promise<InputMessage> {
     const args = this.options.args ?? process.argv.slice(2);
@@ -108,6 +116,13 @@ export class CLIInput implements InputInterface {
           break;
         }
 
+        if (text === "/new") {
+          this.newSession();
+          output.write("Started a new conversation.\n");
+          if (this.listening) output.write(prompt);
+          continue;
+        }
+
         if (text) {
           await listener(this.createMessage(text));
         }
@@ -132,7 +147,7 @@ export class CLIInput implements InputInterface {
     return {
       id: `input-${randomUUID()}`,
       channel: this.channel,
-      sessionId: this.options.sessionId ?? `cli-${randomUUID()}`,
+      sessionId: this.sessionId,
       text,
       createdAt: new Date(),
     };
@@ -182,3 +197,7 @@ export class CLIOutput implements OutputInterface {
 }
 
 export { CLIInput as CLIInputAdapter, CLIOutput as CLIOutputAdapter };
+
+function createSessionId(): string {
+  return `cli-${randomUUID()}`;
+}

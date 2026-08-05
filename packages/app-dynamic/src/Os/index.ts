@@ -1,8 +1,11 @@
 import type {
+  AIProcessResult,
   InputMessage,
   OSBootOptions,
+  OutputInterface,
 } from "@agent-os/core/domain";
 import { formatAgentLoopEvent } from "../utils/format-agent-loop-event.js";
+import { ConversationHistory } from "./conversation-history.js";
 
 export default class OS {
   private bootOptions?: OSBootOptions;
@@ -36,10 +39,13 @@ export default class OS {
     }
 
     this.listening = true;
+    const history = new ConversationHistory(bootOptions.memory);
 
     const listener = async (message: InputMessage) => {
+      const contextualized = await history.contextualize(message);
+      await history.rememberUser(message);
       const decision = await bootOptions.orchestrator.orchestrate(
-        message,
+        contextualized,
         bootOptions.output,
       );
       const output = bootOptions.output.find(
@@ -52,7 +58,7 @@ export default class OS {
         );
       }
 
-      const response = await bootOptions.agentLoop.run(message, {
+      const response = await bootOptions.agentLoop.run(contextualized, {
         capabilityIds: decision.capabilityIds,
         stream: bootOptions.settings.stream,
         onEvent: bootOptions.settings.showSteps
@@ -84,20 +90,11 @@ export default class OS {
           .filter(({ route }) => route.content === "response")
           .map(({ destination }) => destination),
       ];
-      const generatedResponse =
-        response.type === "text"
-          ? response.text
-          : responseOutputs.length === 1
-            ? response.stream
-            : await collectStream(response.stream);
-
-      if (typeof generatedResponse === "string") {
-        for (const destination of responseOutputs) {
-          await destination.write(generatedResponse);
-        }
-      } else {
-        await output.write(generatedResponse);
-      }
+      const generatedResponse = await deliverResponse(
+        response,
+        responseOutputs,
+      );
+      await history.rememberAssistant(message, generatedResponse);
 
       for (const { route, destination } of additionalOutputs) {
         if (route.content === "text" && route.text !== undefined) {
@@ -140,6 +137,42 @@ export default class OS {
     } finally {
       this.listening = false;
     }
+  }
+}
+
+async function deliverResponse(
+  response: AIProcessResult,
+  outputs: readonly OutputInterface[],
+): Promise<string> {
+  if (response.type === "text") {
+    await writeAll(outputs, response.text);
+    return response.text;
+  }
+  if (outputs.length > 1) {
+    const text = await collectStream(response.stream);
+    await writeAll(outputs, text);
+    return text;
+  }
+
+  const chunks: string[] = [];
+  await outputs[0]!.write(captureStream(response.stream, chunks));
+  return chunks.join("");
+}
+
+async function writeAll(
+  outputs: readonly OutputInterface[],
+  text: string,
+): Promise<void> {
+  for (const output of outputs) await output.write(text);
+}
+
+async function* captureStream(
+  stream: AsyncIterable<string>,
+  chunks: string[],
+): AsyncGenerator<string> {
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+    yield chunk;
   }
 }
 

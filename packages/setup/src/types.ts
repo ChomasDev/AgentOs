@@ -2,6 +2,8 @@ export const INTERFACE_KINDS = [
   "env",
   "ai",
   "discovery",
+  "database",
+  "memory",
   "orchestrator",
   "agent",
   "input",

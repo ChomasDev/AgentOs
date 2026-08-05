@@ -35,6 +35,8 @@ const KINDS = new Set<AgentInterfaceKind>([
   "env",
   "ai",
   "discovery",
+  "database",
+  "memory",
   "orchestrator",
   "agent",
   "input",

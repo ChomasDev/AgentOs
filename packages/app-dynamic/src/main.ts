@@ -22,6 +22,8 @@ console.log("[dynamic] Loaded packages:", {
   agent: init.modules.agent.map((entry) => entry.id),
   orchestrator: init.modules.orchestrator.map((entry) => entry.id),
   discovery: init.modules.discovery.map((entry) => entry.id),
+  database: init.modules.database.map((entry) => entry.id),
+  memory: init.modules.memory.map((entry) => entry.id),
   ai: init.modules.ai.map((entry) => entry.id),
   env: init.modules.env.map((entry) => entry.id),
 });

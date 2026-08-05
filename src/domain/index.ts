@@ -22,6 +22,20 @@ export type {
   TrustLevel,
 } from "./artifacts/data-artifact.js";
 export type {
+  Database,
+  DatabaseColumnSchema,
+  DatabaseColumnType,
+  DatabaseClientOptions,
+  DatabaseIndexSchema,
+  DatabaseKey,
+  DatabaseOrder,
+  DatabaseProvider,
+  DatabaseQuery,
+  DatabaseRecord,
+  DatabaseStructure,
+  DatabaseTableSchema,
+} from "./database/database.js";
+export type {
   Capability,
   CapabilityExecutionContext,
   CapabilityType,
@@ -63,6 +77,7 @@ export type {
   InputMessage,
 } from "./input/input-interface.js";
 export type { MemoryEntry, MemoryKind } from "./memory/memory-entry.js";
+export type { Memory } from "./memory/memory.js";
 export type { MemoryProposal } from "./memory/memory-proposal.js";
 export type { MemoryQuery } from "./memory/memory-query.js";
 export type {

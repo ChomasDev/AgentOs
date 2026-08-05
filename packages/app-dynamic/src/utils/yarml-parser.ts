@@ -5,6 +5,8 @@ export type AgentInterfaceKind =
   | "env"
   | "ai"
   | "discovery"
+  | "database"
+  | "memory"
   | "orchestrator"
   | "agent"
   | "input"
@@ -21,6 +23,8 @@ export interface AgentInterfaces {
   env: PackageConf[];
   ai: PackageConf[];
   discovery: PackageConf[];
+  database: PackageConf[];
+  memory: PackageConf[];
   orchestrator: PackageConf[];
   agent: PackageConf[];
   input: PackageConf[];
@@ -37,6 +41,8 @@ const INTERFACE_KINDS = [
   "env",
   "ai",
   "discovery",
+  "database",
+  "memory",
   "orchestrator",
   "agent",
   "input",

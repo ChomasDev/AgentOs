@@ -25,4 +25,14 @@ export interface Capability<TInput = unknown, TOutput = unknown> {
 }
 
 
-export type CapabilityType = "action" | "agent" | "orchestrator" | "discovery" | "ai" | "env" | "input" | "output";
+export type CapabilityType =
+  | "action"
+  | "agent"
+  | "orchestrator"
+  | "discovery"
+  | "database"
+  | "memory"
+  | "ai"
+  | "env"
+  | "input"
+  | "output";

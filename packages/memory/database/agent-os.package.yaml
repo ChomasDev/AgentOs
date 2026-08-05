@@ -1,0 +1,15 @@
+schemaVersion: 1
+id: memory-database
+name: Database Memory
+version: 0.1.0
+description: Agent OS memory stored through the selected database provider
+interfaces:
+  - id: memory-database.memory
+    kind: memory
+    entry: .
+    export: .
+    className: DatabaseMemory
+    name: DatabaseMemory
+    permissions: []
+    startup:
+      when: always

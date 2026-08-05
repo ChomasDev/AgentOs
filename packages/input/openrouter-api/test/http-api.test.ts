@@ -38,9 +38,11 @@ test("correlates a chat request with its JSON response", async () => {
   await withServer(api, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/v1/chat/completions`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-session-id": "web-1" },
+      headers: { "content-type": "application/json", "x-session-id": "header-session" },
       body: JSON.stringify({
         model: "agent-os",
+        session_id: "web-1",
+        user: "user-1",
         messages: [{ role: "user", content: "Hello" }],
       }),
     });
@@ -53,6 +55,7 @@ test("correlates a chat request with its JSON response", async () => {
     assert.match(body.id, /^chatcmpl-/);
     assert.equal(body.choices[0]?.message.content, "Hello from Agent OS");
     assert.equal(received?.sessionId, "web-1");
+    assert.equal(received?.userId, "user-1");
     assert.match(received?.text ?? "", /USER:\nHello/);
   }, listener);
 });

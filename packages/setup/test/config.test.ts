@@ -17,6 +17,8 @@ const catalog: PackageManifest[] = [
   ]),
   manifest("env-node", "Node Environment", [iface("env-node.env", "env")]),
   manifest("discovery", "Discovery", [iface("discovery.main", "discovery")]),
+  manifest("database-sqlite", "Database", [iface("database.main", "database")]),
+  manifest("memory-database", "Memory", [iface("memory.main", "memory")]),
   manifest("orchestrator", "Orchestrator", [
     iface("orchestrator.main", "orchestrator"),
   ]),
@@ -37,6 +39,8 @@ test("initializes core defaults and the manifest model", () => {
   assert.deepEqual(selection.interfaces.ai, ["ai-codex"]);
   assert.deepEqual(selection.interfaces.input, ["io-cli"]);
   assert.deepEqual(selection.interfaces.output, ["io-cli"]);
+  assert.deepEqual(selection.interfaces.database, ["database-sqlite"]);
+  assert.deepEqual(selection.interfaces.memory, ["memory-database"]);
   assert.equal(selection.model, "gpt-default");
 });
 

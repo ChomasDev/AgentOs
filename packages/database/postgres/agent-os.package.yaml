@@ -1,0 +1,21 @@
+schemaVersion: 1
+id: database-postgres
+name: PostgreSQL Database
+version: 0.1.0
+description: Capability-scoped database using native PostgreSQL schemas
+interfaces:
+  - id: database-postgres.database
+    kind: database
+    entry: .
+    export: .
+    className: PostgresDatabaseProvider
+    name: PostgresDatabaseProvider
+    permissions: [network.outbound]
+    config:
+      - key: connectionString
+        env: DATABASE_URL
+        type: secret
+        required: true
+        description: PostgreSQL connection string
+    startup:
+      when: ifConfigured

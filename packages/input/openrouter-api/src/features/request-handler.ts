@@ -145,6 +145,7 @@ export class RequestHandler {
       id: `input-${randomUUID()}`,
       channel: "openrouter-api",
       sessionId,
+      userId: normalizeText(body.user),
       text: renderConversation(body.messages),
       createdAt: new Date(),
       metadata: {

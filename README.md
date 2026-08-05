@@ -14,6 +14,8 @@ Each adapter package implements one domain interface:
 | `ai` | `AIProvider` | `packages/ai/<name>` | `@agent-os/ai-<name>` | Model provider (OpenAI, Claude, local, …) |
 | `env` | `Environment` | `packages/env/<name>` | `@agent-os/env-<name>` | Reads configuration and secrets from process env, dotenv, maps, vaults, … |
 | `discovery` | `CapabilityDiscovery` | `packages/discovery/<name>` | `@agent-os/discovery-<name>` | Registry that finds/registers capabilities |
+| `database` | `DatabaseProvider` | `packages/database/<name>` | `@agent-os/database-<name>` | Gives every component an isolated, structured database namespace |
+| `memory` | `Memory` | `packages/memory/<name>` | `@agent-os/memory-<name>` | Stores chat history and durable agent memories |
 | `orchestrator` | `Orchestrator` | `packages/orchestrator/<name>` | `@agent-os/orchestrator-<name>` | Selects capabilities and the response destination for each message |
 | `agent` | `AgentLoop` | `packages/agent/<name>` | `@agent-os/agent-<name>` | Runs the model/tool loop with the selected capabilities |
 
@@ -147,8 +149,11 @@ requested by `agent-conf.yaml` together with their requirements.
 | `@agent-os/ai-codex` | ai |
 | `@agent-os/env-node` | env |
 | `@agent-os/discovery-memory` | discovery |
+| `@agent-os/database-sqlite` | database |
+| `@agent-os/database-postgres` | database |
+| `@agent-os/memory-database` | memory |
 | `@agent-os/orchestrator-default` | orchestrator |
-| `@agent-os/output-telegram` | output |
+| `@agent-os/output-telegram` | input + output |
 | `@agent-os/agent-loop` | agent |
 | `@agent-os/app` | composition root |
 
@@ -168,6 +173,50 @@ const env = new CompositeEnvironment([
 
 Codex, Perplexity, CLI child processes, OS settings, and terminal formatting
 all receive configuration through this environment instance.
+
+## Database and memory
+
+The runtime selects one database provider and injects a scoped `Database` into
+every component constructor. A package named `web` receives the `web`
+namespace; it can use either local table names such as `pages` or the qualified
+form `web.pages`. Access outside that namespace is rejected.
+
+Components declare their tables with a JSON structure and then use the same API
+with either backend:
+
+```ts
+await database.init({
+  tables: {
+    pages: {
+      primaryKey: "id",
+      columns: {
+        id: { type: "string", required: true },
+        title: { type: "string", required: true },
+        metadata: { type: "json", default: {} },
+      },
+      indexes: [{ columns: ["title"] }],
+    },
+  },
+});
+
+await database.add("web.pages", { id: "home", title: "Home" });
+await database.get("pages", "home");
+await database.set("pages", "home", { title: "New home" });
+await database.update("pages", "home", { title: "Updated" });
+await database.delete("pages", "home");
+```
+
+SQLite maps namespaces to isolated physical table names in one local file.
+PostgreSQL creates native schemas, so a component table is visible as, for
+example, `web.pages`. SQLite is the default at `.agent-os/agent-os.sqlite`;
+choose `database-postgres` in `agent-conf.yaml` and set `DATABASE_URL` to use
+PostgreSQL. Memory is backend-neutral: `memory-database` creates its JSON table
+structure through the selected provider.
+
+Chat history is isolated by session. CLI and Telegram keep one session until
+`/new`; the HTTP API accepts `session_id` in the request body or
+`x-session-id` in the headers. The input adapter creates an ID when none is
+provided.
 
 ## Orchestration
 

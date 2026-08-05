@@ -33,6 +33,8 @@ export function createInitialSelection(
   ensureSingleDefault(interfaces, catalog, "ai");
   ensureSingleDefault(interfaces, catalog, "env");
   ensureSingleDefault(interfaces, catalog, "discovery");
+  ensureSingleDefault(interfaces, catalog, "database", "database-sqlite");
+  ensureSingleDefault(interfaces, catalog, "memory", "memory-database");
   ensureSingleDefault(interfaces, catalog, "orchestrator");
   ensureSingleDefault(interfaces, catalog, "agent");
 
@@ -202,12 +204,15 @@ function ensureSingleDefault(
   interfaces: Record<InterfaceKind, string[]>,
   catalog: readonly PackageManifest[],
   kind: InterfaceKind,
+  preferredId?: string,
 ): void {
   if (interfaces[kind].length > 0) {
     interfaces[kind] = [interfaces[kind][0]!];
     return;
   }
   const first = catalog.find((pkg) =>
+    pkg.id === preferredId && pkg.interfaces.some((iface) => iface.kind === kind),
+  ) ?? catalog.find((pkg) =>
     pkg.interfaces.some((iface) => iface.kind === kind),
   );
   if (first) {

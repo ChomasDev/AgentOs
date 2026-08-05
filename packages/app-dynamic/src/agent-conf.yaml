@@ -8,6 +8,10 @@ interfaces:
         model: gpt-5.6-sol
   discovery:
     - discovery-memory
+  database:
+    - database-sqlite
+  memory:
+    - memory-database
   orchestrator:
     - orchestrator-default
   agent:
@@ -16,6 +20,7 @@ interfaces:
         maxSteps: 100
   input:
     - cronjob
+    - telegram
     - id: openrouter-api
       config:
         hostname: 127.0.0.1

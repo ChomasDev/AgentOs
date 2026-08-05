@@ -66,9 +66,9 @@ test("rejects dependencies which are not in the package", () => {
   assert.throws(
     () =>
       parsePackageManifest(
-        manifestSource.replace("required: [input]", "required: [database]"),
+        manifestSource.replace("required: [input]", "required: [unknown-kind]"),
       ),
-    /requires unknown interface or kind "database"/,
+    /requires unknown interface or kind "unknown-kind"/,
   );
 });
 
@@ -100,5 +100,5 @@ test("all workspace capability packages have a valid YAML manifest", async () =>
     }
   }
 
-  assert.equal(manifests.length, 14);
+  assert.equal(manifests.length, 17);
 });

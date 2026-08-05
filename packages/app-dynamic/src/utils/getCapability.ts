@@ -38,8 +38,10 @@ export async function getOrDownloadCapability(
   return withInstallLock(async () => {
     const manifest = await resolvePackageManifest(capability);
     let installedInterfaces = await readInstalledInterfaces(capability);
+    const installed = await isCapabilityInstalled(capability);
+    const refreshLocal = installed && await hasLocalPackageUpdate(capability);
 
-    if (!(await isCapabilityInstalled(capability))) {
+    if (!installed) {
       installedInterfaces = await selectInterfaces(
         manifest,
         requestedKinds,
@@ -51,6 +53,15 @@ export async function getOrDownloadCapability(
         );
       }
       await installCapability(capability);
+      await writeInstallSelection(capability, manifest, installedInterfaces);
+    } else if (refreshLocal) {
+      await installCapability(capability);
+      installedInterfaces ??= manifest.interfaces.map((iface) => iface.id);
+      installedInterfaces = await includeRequestedInterfaces(
+        manifest,
+        requestedKinds,
+        installedInterfaces,
+      );
       await writeInstallSelection(capability, manifest, installedInterfaces);
     } else if (!installedInterfaces) {
       // Packages installed before selective manifests existed keep their old behavior.
@@ -107,6 +118,14 @@ function resolveInstalledModuleUrl(capability: string): string {
 async function resolvePackageManifest(
   capability: string,
 ): Promise<PackageManifest> {
+  const sourceRoot = await findPackageRoot(capability, false);
+  if (sourceRoot) {
+    const sourcePath = join(sourceRoot, PACKAGE_MANIFEST_FILE);
+    if (await exists(sourcePath)) {
+      return loadPackageManifest(sourcePath);
+    }
+  }
+
   const installedPath = join(
     capabilityRoot,
     capability,
@@ -116,14 +135,6 @@ async function resolvePackageManifest(
     return loadPackageManifest(installedPath);
   }
 
-  const sourceRoot = await findPackageRoot(capability, false);
-  if (sourceRoot) {
-    const sourcePath = join(sourceRoot, PACKAGE_MANIFEST_FILE);
-    if (await exists(sourcePath)) {
-      return loadPackageManifest(sourcePath);
-    }
-  }
-
   const registryPackage = await readRegistryPackage(capability);
   if (registryPackage?.manifest) {
     return assertPackageManifest(registryPackage.manifest);
@@ -131,6 +142,40 @@ async function resolvePackageManifest(
   throw new Error(
     `Package "${capability}" has no ${PACKAGE_MANIFEST_FILE} and no registry manifest`,
   );
+}
+
+async function includeRequestedInterfaces(
+  manifest: PackageManifest,
+  requestedKinds: readonly CapabilityType[],
+  installedInterfaces: readonly string[],
+): Promise<string[]> {
+  const missingKinds = requestedKinds.filter(
+    (kind) => !manifest.interfaces.some(
+      (iface) => iface.kind === kind && installedInterfaces.includes(iface.id),
+    ),
+  );
+  if (missingKinds.length === 0) return [...installedInterfaces];
+  return selectInterfaces(manifest, missingKinds, installedInterfaces);
+}
+
+async function hasLocalPackageUpdate(capability: string): Promise<boolean> {
+  const sourceRoot = await findBuiltPackageRoot(capability);
+  if (!sourceRoot) return false;
+  const installedRoot = join(capabilityRoot, capability);
+  const comparedFiles = [PACKAGE_MANIFEST_FILE, "package.json", join("dist", "index.js")];
+
+  for (const file of comparedFiles) {
+    const sourcePath = join(sourceRoot, file);
+    const installedPath = join(installedRoot, file);
+    if (!(await exists(sourcePath))) continue;
+    if (!(await exists(installedPath))) return true;
+    const [source, installed] = await Promise.all([
+      readFile(sourcePath),
+      readFile(installedPath),
+    ]);
+    if (!source.equals(installed)) return true;
+  }
+  return false;
 }
 
 async function readInstalledInterfaces(

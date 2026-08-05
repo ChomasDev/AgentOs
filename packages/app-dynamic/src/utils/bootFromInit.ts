@@ -3,61 +3,59 @@ import type {
   AIProvider,
   Capability,
   CapabilityDiscovery,
-  CapabilityType,
-  Environment,
+  DatabaseProvider,
   InputInterface,
+  Memory,
   Orchestrator,
   OutputInterface,
 } from "@agent-os/core/domain";
-import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import OS from "../Os/index.js";
-import type {
-  CapabilityModule,
-  InitConf,
-  LoadedPackage,
-} from "./getinitConf.js";
+import {
+  buildOptions,
+  createEnvironment,
+  createKindInstances,
+  instantiate,
+  requireFirst,
+  SkipInstantiationError,
+} from "./component-factory.js";
+import type { InitConf } from "./getinitConf.js";
+import {
+  interfacesFor,
+  loadRegistryIndex,
+  overlayLoadedManifests,
+} from "./package-registry.js";
 
 const repositoryRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 
-type AnyConstructor = new (...args: any[]) => unknown;
-
-interface RegistryInterface {
-  id: string;
-  kind: CapabilityType | string;
-  className: string;
-  config?: readonly RegistryConfigEntry[];
-}
-
-interface RegistryConfigEntry {
-  key: string;
-  env?: string;
-  type?: string;
-  required?: boolean;
-  default?: unknown;
-}
-
-interface RegistryPackage {
-  id: string;
-  interfaces: RegistryInterface[];
-}
-
-interface RegistryIndex {
-  packages: RegistryPackage[];
-}
-
-class SkipInstantiationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "SkipInstantiationError";
-  }
-}
-
 export async function bootFromInit(init: InitConf): Promise<void> {
-  const registry = await loadRegistryIndex();
+  const registry = await loadRegistryIndex(repositoryRoot);
   overlayLoadedManifests(registry, init);
-  const env = createEnvironment(init.modules.env, registry);
+  const env = createEnvironment(init.modules.env, registry, repositoryRoot);
+
+  const database = requireFirst(
+    createKindInstances<DatabaseProvider>(
+      init.modules.database,
+      "database",
+      registry,
+      { cwd: repositoryRoot },
+      env,
+    ),
+    "database",
+  );
+
+  const memory = requireFirst(
+    createKindInstances<Memory>(
+      init.modules.memory,
+      "memory",
+      registry,
+      { cwd: repositoryRoot },
+      env,
+      database,
+    ),
+    "memory",
+  );
 
   const model = requireFirst(
     createKindInstances<AIProvider>(
@@ -66,6 +64,7 @@ export async function bootFromInit(init: InitConf): Promise<void> {
       registry,
       { workingDirectory: repositoryRoot },
       env,
+      database,
     ),
     "ai",
   );
@@ -77,6 +76,7 @@ export async function bootFromInit(init: InitConf): Promise<void> {
       registry,
       {},
       env,
+      database,
     ),
     "discovery",
   );
@@ -87,6 +87,7 @@ export async function bootFromInit(init: InitConf): Promise<void> {
     registry,
     { env, cwd: repositoryRoot },
     env,
+    database,
   )) {
     await initializeCapability(action);
     await capabilityDiscovery.register(action);
@@ -110,7 +111,11 @@ export async function bootFromInit(init: InitConf): Promise<void> {
         const action = instantiate(
           loaded.module,
           iface.className,
-          buildOptions(iface.config, env, { env, cwd: repositoryRoot }),
+          buildOptions(iface.config, env, {
+            env,
+            cwd: repositoryRoot,
+            database: database.scope(loaded.id),
+          }),
         ) as Capability;
         await initializeCapability(action);
         await capabilityDiscovery.register(action);
@@ -130,6 +135,7 @@ export async function bootFromInit(init: InitConf): Promise<void> {
       registry,
       { model, capabilityDiscovery },
       env,
+      database,
     ),
     "agent",
   );
@@ -141,12 +147,13 @@ export async function bootFromInit(init: InitConf): Promise<void> {
       registry,
       { model, capabilityDiscovery },
       env,
+      database,
     ),
     "orchestrator",
   );
 
   const shutdownRef: { current?: () => void } = {};
-  // Share instances across kinds so dual input/output adapters (openrouter)
+  // Share instances across kinds so dual input/output adapters
   // keep HTTP request context for write().
   const sharedInstances = new Map<string, unknown>();
   const inputs = createKindInstances<InputInterface>(
@@ -163,6 +170,7 @@ export async function bootFromInit(init: InitConf): Promise<void> {
       workingDirectory: repositoryRoot,
     },
     env,
+    database,
     sharedInstances,
   );
   const outputs = createKindInstances<OutputInterface>(
@@ -171,6 +179,7 @@ export async function bootFromInit(init: InitConf): Promise<void> {
     registry,
     { env },
     env,
+    database,
     sharedInstances,
   );
 
@@ -180,6 +189,12 @@ export async function bootFromInit(init: InitConf): Promise<void> {
     if (typeof maybeClose === "function") {
       closers.push(() => maybeClose.call(input));
     }
+  }
+  if (typeof memory.close === "function") {
+    closers.push(() => memory.close!());
+  }
+  if (typeof database.close === "function") {
+    closers.push(() => database.close!());
   }
 
   if (inputs.length === 0) {
@@ -207,6 +222,7 @@ export async function bootFromInit(init: InitConf): Promise<void> {
     agentLoop,
     env,
     input: inputs,
+    memory,
     orchestrator,
     output: outputs,
     settings: {
@@ -231,282 +247,5 @@ export async function bootFromInit(init: InitConf): Promise<void> {
 async function initializeCapability(action: Capability): Promise<void> {
   if (typeof action.initialize === "function") {
     await action.initialize();
-  }
-}
-
-function createEnvironment(
-  packages: LoadedPackage[],
-  registry: RegistryIndex,
-): Environment {
-  if (packages.length === 0) {
-    throw new Error("agent-conf must declare at least one env package");
-  }
-
-  const loaded = packages[0]!;
-  const module = loaded.module;
-  const ProcessEnvironment = getConstructor(module, "ProcessEnvironment");
-  const DotenvEnvironment = getConstructor(module, "DotenvEnvironment");
-  const CompositeEnvironment = getConstructor(module, "CompositeEnvironment");
-  const defaultEnvironmentInterfaces = [
-    "env-node.process",
-    "env-node.dotenv",
-    "env-node.composite",
-  ];
-
-  if (
-    ProcessEnvironment &&
-    DotenvEnvironment &&
-    CompositeEnvironment &&
-    defaultEnvironmentInterfaces.every((id) =>
-      loaded.installedInterfaces.includes(id),
-    )
-  ) {
-    return new CompositeEnvironment([
-      new ProcessEnvironment(),
-      new DotenvEnvironment({
-        filePath: resolve(repositoryRoot, ".env"),
-      }),
-    ]) as Environment;
-  }
-
-  const first = interfacesFor(
-    loaded.id,
-    "env",
-    registry,
-    loaded.installedInterfaces,
-  )[0];
-  if (!first) {
-    throw new Error(`No env interfaces found for package "${loaded.id}"`);
-  }
-  return instantiate(module, first.className, {}) as Environment;
-}
-
-function createKindInstances<T>(
-  packages: LoadedPackage[],
-  kind: CapabilityType,
-  registry: RegistryIndex,
-  extras: Record<string, unknown>,
-  env: Environment,
-  sharedInstances?: Map<string, unknown>,
-): T[] {
-  const instances: T[] = [];
-
-  for (const loaded of packages) {
-    for (const iface of interfacesFor(
-      loaded.id,
-      kind,
-      registry,
-      loaded.installedInterfaces,
-    )) {
-      const cacheKey = `${loaded.id}::${iface.className}`;
-      const cached = sharedInstances?.get(cacheKey);
-      if (cached) {
-        instances.push(cached as T);
-        continue;
-      }
-
-      try {
-        const options = buildOptions(
-          iface.config,
-          env,
-          extras,
-          loaded.config,
-        );
-        const instance = instantiate(
-          loaded.module,
-          iface.className,
-          options,
-        ) as T;
-        sharedInstances?.set(cacheKey, instance);
-        instances.push(instance);
-      } catch (error) {
-        if (error instanceof SkipInstantiationError) {
-          console.warn(
-            `[dynamic] Skipping ${loaded.id}.${iface.className}: ${error.message}`,
-          );
-          continue;
-        }
-        throw error;
-      }
-    }
-  }
-
-  return instances;
-}
-
-function requireFirst<T>(instances: T[], kind: string): T {
-  const first = instances[0];
-  if (!first) {
-    throw new Error(`agent-conf must declare at least one ${kind} package`);
-  }
-  return first;
-}
-
-function buildOptions(
-  config: readonly RegistryConfigEntry[] | undefined,
-  env: Environment,
-  extras: Record<string, unknown>,
-  yamlConfig?: Record<string, unknown>,
-): Record<string, unknown> {
-  const options: Record<string, unknown> = { ...extras };
-
-  for (const entry of config ?? []) {
-    let value: unknown = yamlConfig?.[entry.key];
-
-    if (value === undefined || value === "") {
-      value = entry.env !== undefined ? env.get(entry.env) : undefined;
-    }
-
-    if (value === undefined || value === "") {
-      value = entry.default;
-    }
-
-    if ((value === undefined || value === "") && entry.required) {
-      throw new SkipInstantiationError(
-        `Missing required config "${entry.key}"${entry.env ? ` (${entry.env})` : ""}`,
-      );
-    }
-
-    if (value !== undefined && value !== "") {
-      options[entry.key] = coerceConfigValue(value, entry.type);
-    }
-  }
-
-  // Allow arbitrary yaml keys beyond registry config schema.
-  for (const [key, value] of Object.entries(yamlConfig ?? {})) {
-    if (value !== undefined) {
-      options[key] = value;
-    }
-  }
-
-  if ("model" in options && !("models" in options)) {
-    options.models = [options.model];
-  }
-
-  return options;
-}
-
-function coerceConfigValue(value: unknown, type: string | undefined): unknown {
-  if (type === "number") {
-    const number = typeof value === "number" ? value : Number(value);
-    if (!Number.isFinite(number)) {
-      throw new Error(`Invalid number config value: ${String(value)}`);
-    }
-    return number;
-  }
-  if (type === "boolean") {
-    if (typeof value === "boolean") {
-      return value;
-    }
-    if (value === "true" || value === "1") {
-      return true;
-    }
-    if (value === "false" || value === "0") {
-      return false;
-    }
-    throw new Error(`Invalid boolean config value: ${String(value)}`);
-  }
-  return value;
-}
-
-function instantiate(
-  module: CapabilityModule,
-  className: string,
-  options: Record<string, unknown>,
-): unknown {
-  const Ctor = getConstructor(module, className);
-  if (!Ctor) {
-    throw new Error(`Module does not export class "${className}"`);
-  }
-
-  try {
-    return new Ctor(options);
-  } catch (error) {
-    if (Object.keys(options).length > 0) {
-      try {
-        return new Ctor();
-      } catch {
-        throw error;
-      }
-    }
-    throw error;
-  }
-}
-
-function getConstructor(
-  module: CapabilityModule,
-  className: string,
-): AnyConstructor | undefined {
-  const value = module[className];
-  return typeof value === "function" ? (value as AnyConstructor) : undefined;
-}
-
-function interfacesFor(
-  packageId: string,
-  kind: CapabilityType,
-  registry: RegistryIndex,
-  installedInterfaces?: readonly string[],
-): RegistryInterface[] {
-  const pkg = registry.packages.find((entry) => entry.id === packageId);
-  if (!pkg) {
-    throw new Error(
-      `Package "${packageId}" not found in registry index (.agent-os/registry/index.json)`,
-    );
-  }
-  return pkg.interfaces.filter(
-    (iface) =>
-      iface.kind === kind &&
-      (!installedInterfaces || installedInterfaces.includes(iface.id)),
-  );
-}
-
-async function loadRegistryIndex(): Promise<RegistryIndex> {
-  const indexPath = join(repositoryRoot, ".agent-os/registry/index.json");
-  const raw = JSON.parse(await readFile(indexPath, "utf8")) as RegistryIndex;
-  if (!Array.isArray(raw.packages)) {
-    throw new Error(`Invalid registry index at ${indexPath}`);
-  }
-  return raw;
-}
-
-function overlayLoadedManifests(
-  registry: RegistryIndex,
-  init: InitConf,
-): void {
-  const loadedPackages = new Map<string, LoadedPackage>();
-  for (const modules of Object.values(init.modules)) {
-    for (const loaded of modules) {
-      loadedPackages.set(loaded.id, loaded);
-    }
-  }
-
-  for (const loaded of loadedPackages.values()) {
-    const interfaces = loaded.manifest.interfaces.map((iface) => {
-      if (typeof iface.className !== "string" || iface.className === "") {
-        throw new Error(
-          `Package "${loaded.id}" interface "${iface.id}" has no className`,
-        );
-      }
-      return {
-        id: iface.id,
-        kind: iface.kind,
-        className: iface.className,
-        config: Array.isArray(iface.config)
-          ? iface.config as unknown as RegistryConfigEntry[]
-          : undefined,
-      };
-    });
-    const replacement: RegistryPackage = {
-      id: loaded.id,
-      interfaces,
-    };
-    const index = registry.packages.findIndex(
-      (entry) => entry.id === loaded.id,
-    );
-    if (index >= 0) {
-      registry.packages[index] = replacement;
-    } else {
-      registry.packages.push(replacement);
-    }
   }
 }

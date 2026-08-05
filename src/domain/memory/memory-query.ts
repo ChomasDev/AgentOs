@@ -8,4 +8,5 @@ export interface MemoryQuery {
   limit?: number;
   minImportance?: number;
   metadata?: Readonly<Record<string, unknown>>;
+  order?: "oldest" | "newest";
 }

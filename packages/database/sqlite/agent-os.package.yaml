@@ -1,0 +1,22 @@
+schemaVersion: 1
+id: database-sqlite
+name: SQLite Database
+version: 0.1.0
+description: Capability-scoped local database backed by SQLite
+interfaces:
+  - id: database-sqlite.database
+    kind: database
+    entry: .
+    export: .
+    className: SQLiteDatabaseProvider
+    name: SQLiteDatabaseProvider
+    permissions: [filesystem.read, filesystem.write]
+    config:
+      - key: databasePath
+        env: DATABASE_SQLITE_PATH
+        type: string
+        required: false
+        default: .agent-os/agent-os.sqlite
+        description: "SQLite database path or :memory:"
+    startup:
+      when: always

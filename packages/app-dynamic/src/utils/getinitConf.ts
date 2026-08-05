@@ -26,6 +26,8 @@ export interface InitConfModules {
   agent: LoadedPackage[];
   orchestrator: LoadedPackage[];
   discovery: LoadedPackage[];
+  database: LoadedPackage[];
+  memory: LoadedPackage[];
   ai: LoadedPackage[];
   env: LoadedPackage[];
 }
@@ -42,6 +44,8 @@ const KINDS = [
   "agent",
   "orchestrator",
   "discovery",
+  "database",
+  "memory",
   "ai",
   "env",
 ] as const satisfies readonly AgentInterfaceKind[];
