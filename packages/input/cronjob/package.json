@@ -23,5 +23,8 @@
   "dependencies": {
     "@agent-os/core": "workspace:*",
     "node-cron": "^4.2.1"
+  },
+  "devDependencies": {
+    "@agent-os/database-sqlite": "workspace:*"
   }
 }

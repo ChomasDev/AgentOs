@@ -9,7 +9,6 @@ import type {
   Orchestrator,
   OutputInterface,
 } from "@agent-os/core/domain";
-import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import OS from "../Os/index.js";
 import {
@@ -79,17 +78,12 @@ export async function bootFromInit(init: InitConf): Promise<void> {
 
   const shutdownRef: { current?: () => void } = {};
   const sharedInstances = new Map<string, unknown>();
-  const databasePath = env.getOrDefault(
-    "CRONJOB_DB_PATH",
-    resolve(repositoryRoot, ".agent-os/cronjobs.sqlite"),
-  );
   const inputs = createKindInstances<InputInterface>(
     init.modules.input,
     "input",
     registry,
     {
       env,
-      databasePath,
       onInterrupt: () => shutdownRef.current?.(),
       workingDirectory: repositoryRoot,
     },
@@ -102,7 +96,7 @@ export async function bootFromInit(init: InitConf): Promise<void> {
     init.modules.action,
     "action",
     registry,
-    { env, cwd: repositoryRoot, databasePath },
+    { env, cwd: repositoryRoot },
     env,
     database,
     sharedInstances,
@@ -118,7 +112,7 @@ export async function bootFromInit(init: InitConf): Promise<void> {
       [loaded],
       "action",
       registry,
-      { env, cwd: repositoryRoot, databasePath },
+      { env, cwd: repositoryRoot },
       env,
       database,
       sharedInstances,

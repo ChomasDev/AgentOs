@@ -17,12 +17,6 @@ interfaces:
     permissions:
       - cronjobs.read
       - filesystem
-    config:
-      - key: databasePath
-        env: CRONJOB_DB_PATH
-        type: string
-        required: false
-        description: SQLite path for cron job persistence (defaults to .agent-os/cronjobs.sqlite)
     startup:
       when: always
     name: CronjobInput

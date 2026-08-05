@@ -249,9 +249,9 @@ TELEGRAM_CHAT_ID=123456789
 
 ## Cron jobs
 
-The main app starts `CronjobInput` beside `CLIInput`. Cron jobs are stored in
-SQLite at `.agent-os/cronjobs.sqlite` by default and restored whenever the app
-starts. Override the location with `CRONJOB_DB_PATH`.
+The main app starts `CronjobInput` beside `CLIInput`. Cron jobs are stored by
+the configured Agent OS database provider and restored whenever the app starts.
+This works with both the SQLite and Postgres database packages.
 
 Each active job stores a cron expression and an agent prompt. When `node-cron`
 fires the job, the prompt enters the same agent loop as any other input.

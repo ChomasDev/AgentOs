@@ -24,7 +24,7 @@ export class CronjobAdapter
   private readonly input: CronjobInput;
   private readonly capability: ManageCronjobsCapability;
 
-  constructor(options: CronjobInputOptions = {}) {
+  constructor(options: CronjobInputOptions) {
     this.input = new CronjobInput(options);
     this.capability = new ManageCronjobsCapability(this.input);
     this.manifest = this.capability.manifest;
